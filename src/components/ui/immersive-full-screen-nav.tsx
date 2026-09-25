@@ -281,11 +281,11 @@ export function FullscreenNav({
     <NavContext.Provider value={api}>
     <div ref={rootRef}>
       <header
-        className={`fixed inset-x-0 top-0 z-70 grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-x-6 px-(--gutter) md:h-18 ${headerClassName}`}
+        className={`fixed inset-x-0 top-0 z-70 grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-x-3 px-(--gutter) sm:gap-x-6 md:h-18 ${headerClassName}`}
       >
         <div className="flex min-w-0 items-center justify-self-start">{brand}</div>
         <div className="flex items-center justify-self-center">{center}</div>
-        <div className="flex items-center gap-3 justify-self-end">
+        <div className="flex items-center gap-2 justify-self-end sm:gap-3">
           {actions}
           {/* Two-line mark: the short lower line reaches full width on hover,
               and both lines meet in an X while open. */}

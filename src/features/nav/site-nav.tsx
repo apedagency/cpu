@@ -268,14 +268,14 @@ function ContractButton() {
   const swapped = copied || failed;
 
   return (
-    // Below 420px the brand and menu get the row; the address lives in the menu.
-    <div inert={isOpen} className={cn("hidden min-[420px]:block", hiddenWhileOpen(isOpen))}>
+    // Always on the right of the bar, at every width.
+    <div inert={isOpen} className={hiddenWhileOpen(isOpen)}>
       <button
         type="button"
         onClick={() => void copy(token.address)}
         aria-label={`Copy ${token.symbol} contract address`}
         className={cn(
-          "relative inline-flex h-9 cursor-pointer items-center gap-2 rounded-xs border bg-ink-1/40 px-3.5 text-[0.8125rem] font-medium whitespace-nowrap",
+          "relative inline-flex h-9 cursor-pointer items-center gap-2 rounded-xs border bg-ink-1/40 px-3 text-[0.8125rem] font-medium whitespace-nowrap sm:px-3.5",
           "transition-[background-color,border-color,color] duration-300 hover:bg-teal/8",
           // 44px hit area around the 36px chip.
           "before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
@@ -293,7 +293,8 @@ function ContractButton() {
             {failed ? "Copy failed" : "Copied"}
           </span>
         </span>
-        <span className="relative grid size-3.5 place-items-center" aria-hidden="true">
+        {/* Dropped on the narrowest phones so the label never meets the brand. */}
+        <span className="relative grid size-3.5 place-items-center max-[359px]:hidden" aria-hidden="true">
           <Copy className={cn("size-3.5 text-mint/60 transition-opacity duration-300", copied ? "opacity-0" : "opacity-100")} />
           <Check className={cn("absolute size-3.5 text-teal transition-opacity duration-300", copied ? "opacity-100" : "opacity-0")} />
         </span>
