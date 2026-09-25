@@ -23,7 +23,7 @@ import { useFinePointer, useReducedMotion } from "@/hooks/use-media";
 import { cn } from "@/lib/utils";
 import { drawPfp, hitTest, loadBody, loadKit, outlineBox, type Bodies, type Kit, type UserImage } from "./compose";
 import { ACCEPTED_TYPES, BODIES, BODY_ANGLES, DEFAULTS, EXPORT_SIZE, MAX_UPLOAD_BYTES, type BodyAngle, type LayerId } from "./manifest";
-import { clean, freshState, resetLayer, type PfpState, type Transform } from "./state";
+import { clean, freshState, LIMITS, resetLayer, type PfpState, type Transform } from "./state";
 
 const deg = (rad: number) => (rad * 180) / Math.PI;
 /** Preview backing-store cap; export always renders at EXPORT_SIZE. */
@@ -621,6 +621,7 @@ export function Engine() {
   };
   const pct = (v: number) => `${Math.round(v * 100)}%`;
   const degf = (v: number) => `${Math.round(v)}°`;
+  const signed = (v: number) => `${v > 0.004 ? "+" : ""}${Math.round(v * 100)}`;
   const tf = state.transforms;
 
   const items: ToolbarItem[] = [
@@ -675,9 +676,11 @@ export function Engine() {
               ),
             }))}
           />
+          {/* Height first-class: raising or lowering the suit is the fit that matters most. */}
           <div className="flex flex-col gap-1">
-            <Control label="Scale" value={tf.body.scale} min={0.35} max={2.6} step={0.01} format={pct} onChange={(v) => edit("body", { scale: v })} />
-            <Nudge onNudge={nudge("body")} />
+            <Control label="Scale" value={tf.body.scale} min={LIMITS.body.scale[0]} max={LIMITS.body.scale[1]} step={0.01} format={pct} onChange={(v) => edit("body", { scale: v })} />
+            <Control label="Height" value={-tf.body.y} min={-0.6} max={0.6} step={0.005} format={signed} onChange={(v) => edit("body", { y: -v })} />
+            <Control label="Shift" value={tf.body.x} min={-0.6} max={0.6} step={0.005} format={signed} onChange={(v) => edit("body", { x: v })} />
           </div>
           <PanelFoot onReset={() => reset("body")}>
             <button

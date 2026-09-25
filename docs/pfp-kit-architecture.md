@@ -2,8 +2,8 @@
 
 Upload any PFP, wear CPU, adjust, export. Everything runs in the browser.
 
-The wearable system is **the glasses** (always on), **CPU upper-body armour**
-(optional, five angles) and subtle glass effects. There is no head piece: no
+The wearable system is **the glasses** (always on, the primary identity), a
+**CPU armour frame** (optional, five angles) and subtle glass effects. There is no head piece: no
 cat ears, fur, stripes, whiskers or helmet. The uploaded character keeps its
 own head; the official character is the reference for the visor, materials,
 armour and colour only.
@@ -19,9 +19,15 @@ verdict.
 | Asset | Candidates | Selected | Model |
 | --- | --- | --- | --- |
 | Visor | 8 (GPT Image 2.5 ×3, Nano Banana Pro ×3, Seedream 5 Pro ×2) | `visor-01` — closest silhouette to the official visor (IoU 0.957) | GPT Image 2.5, native alpha |
-| Body front | 5 | `front-00` | GPT Image 2.5, native alpha |
-| Body right ¾ / left ¾ | 4 + 4 | `r34-00` / `l34-02` (a matched pair, ~30°) | GPT Image 2.5 |
-| Body right / left | 3 + 3 | `right-12` / `left-13` (a matched pair, ~60°) | GPT Image 2.5 |
+| Body front (v2, universal frame) | 6 | `wfront-04` — wide soft-U open top, rounded low shoulders, both shoulders in frame | GPT Image 2.5, native alpha |
+| Body right ¾ / left ¾ | 2 + 2 | `wr34-10` / `wl34-11` (a matched pair, ~30°) | GPT Image 2.5 |
+| Body right / left | 2 + 2 | `wright-12` / `wleft-13` (a matched pair, ~55–60°) | GPT Image 2.5 |
+
+The v1 bodies (a fitted torso with a collar ring and a neck slot) assumed a
+specific neck and head size and were retired: they made anime, animal, meme and
+cropped PFPs look like a head pasted into a hole. v2 is a **universal lower
+frame**: broad shoulders and a low chest with a wide open top and no neck
+geometry, so any head sits over it.
 
 The angle candidates were generated with the selected front as the primary
 reference (plus the official turnaround view for that direction), so the five
@@ -42,15 +48,16 @@ folder, `rejected/`, `selected/`, and the processing scripts.
   (alpha = max channel).
 - **Effects** share the visor frame: a softened drop shadow, a mint rim light
   outside the glass, and a faint wide sheen.
-- **Bodies** (`process_body.py`). Native alpha; edge colour pulled from the
-  nearest solid pixel (no halos over light or dark). The collar opening is
-  fitted as an ellipse (`fit_collar.py`); a neck-wide slot is removed from the
-  front lip upward so the wearer's own neck passes into the collar and the
-  collar's dark interior stays visible either side.
+- **Bodies** (`process_body_wide.py`). Native alpha; edge colour pulled from
+  the nearest solid pixel (no halos over light or dark). Nothing is cut: the
+  frame is generated open. On the ~60° profiles the open top shows the armour's
+  inner back; `split_back.py` moves it (and the back rim's outline) to
+  `body-<angle>-back`, which draws **under** the PFP, so on opaque PFPs the
+  opening stays clean and on transparent PFPs it peeks out behind the head.
 - **Official Hyperliquid mark.** Never generated. Glasses: the SVG path
   (`components/brand/marks.tsx`) is drawn at runtime with a lit gradient and glow.
   Chest modules were generated blank; the same path is rasterised onto each,
-  warped by the module's shape: scale from the collar ring, horizontal
+  warped by the module's shape: scale from the module height, horizontal
   foreshortening capped at 0.72 so it never reads as an "H", plus the panel's
   shear.
 
@@ -61,6 +68,7 @@ public/pfp-kit/
   visor/     visor-main.{png,webp} visor-glass-base visor-rim visor-reflection
              visor-highlight visor-glow-mask   (.png masters, .webp runtime @1400)
   body/      body-{front,right-34,left-34,right,left}.{png @2560, webp @2048}
+             body-{right,left}-back.{png,webp}   (inner back, under the PFP)
   effects/   glass-reflection-soft mint-rim-light visor-shadow (.png/.webp, half-res)
   previews/  body-*.webp (angle thumbnails), visor.webp
   source/    *-higgsfield.webp (selected masters) + manifest.json
@@ -70,15 +78,18 @@ public/pfp-kit/
 
 - **Glasses** pivot on the mark centre (the eye line). `DEFAULTS.glasses`
   puts it at 40.5 % height with a glass width of 46 % of the canvas.
-- **Body** anchors at the centre of the collar's front lip. Each angle stores
-  that point and its collar-ring width; the ring is a horizontal circle, so its
-  width survives rotation and is the shared scale. Switching angle keeps the
-  neck in place at the same scale. Default: lip at 75 % height, ring 30 % wide.
+- **Body** anchors at the lowest point of the open top between the shoulder
+  peaks (where a chin sits). Each angle stores that point and its chest-module
+  height; turning about the vertical axis keeps heights, so module height is the
+  shared scale and switching angle keeps the frame under the head. Default: the
+  open top at 77 % height, shoulders at the canvas edges, chest mark in frame,
+  face and jaw clear.
 
 ## Rendering (`compose.ts`)
 
 One `drawPfp()` renders the preview (backing store ≤ 1400 px) and the 2048 ×
-2048 PNG export: background → PFP → armour → glasses. The glasses draw, inside
+2048 PNG export: background → armour inner back → PFP → armour front →
+glasses. The PFP is never masked or clipped. The glasses draw, inside
 one matrix: shadow → teal multiply (keeps the face's light, tints it) → base at
 the Glass amount → solid rim → soft sheen, reflection, glow, highlight and rim
 light with `screen` → the official mark. Measured preview/export difference:
@@ -92,7 +103,9 @@ below the stage so the adjusted layer stays in view).
 - PFP: scale, position, reset.
 - Glasses: scale, rotate, glass, reset.
 - Body: **angle first** (21st Segmented Control with thumbnails: Left, Left ¾,
-  Front, Right ¾, Right), then scale, position, armour on/off, reset.
+  Front, Right ¾, Right), then Scale (0.25–3.5×), Height (right raises the
+  suit), Shift, armour on/off, reset. Rotation stays on the corner handle,
+  pinch and [ ].
 - Direct manipulation stays primary: alpha hit-testing picks what you touch;
   drag moves, the corner dot scales and turns (snaps level within 3°), two
   fingers pinch/rotate/pan, ctrl/trackpad pinch zooms, plain wheel scrolls the

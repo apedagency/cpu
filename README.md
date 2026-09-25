@@ -43,7 +43,7 @@ and a failed source renders **Unavailable** — never 0 — while stale data is 
 ## PFP Engine layers
 
 The editor is upload-first: users add a PNG, JPEG, or WebP locally and wear CPU over it — the CPU
-glasses and, optionally, CPU upper-body armour in one of five angles. There is no head piece: the
+glasses and, optionally, a CPU armour frame in one of five angles. There is no head piece: the
 wearer keeps their own head. The image never leaves the browser. Preview and 2048 × 2048 PNG export
 share the Canvas 2D compositor in `src/features/engine/compose.ts`.
 
@@ -51,7 +51,9 @@ Layers (registered in `src/features/engine/manifest.ts`):
 
 - `public/pfp-kit/visor/` — the glasses as separable glass layers (base, rim, reflection, glow,
   highlight) plus a flattened `visor-main`; the official Hyperliquid mark is drawn from its SVG path.
-- `public/pfp-kit/body/` — `body-front`, `body-right-34`, `body-left-34`, `body-right`, `body-left`.
+- `public/pfp-kit/body/` — a universal armour frame (wide open top, no neck geometry) in five angles:
+  `body-front`, `body-right-34`, `body-left-34`, `body-right`, `body-left`; the profiles also have a
+  `-back` layer (the inner back seen through the open top) drawn under the PFP.
 - `public/pfp-kit/effects/` — contact shadow, mint rim light, soft reflection (they follow the glasses).
 - `public/pfp-kit/previews/` — angle-picker thumbnails; `public/pfp-kit/source/` — the selected
   Higgsfield masters and `manifest.json` (models, job ids, verdicts, processing).

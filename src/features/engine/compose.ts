@@ -19,6 +19,8 @@ export interface Kit {
 
 export interface LoadedBody {
   image: HTMLImageElement;
+  /** Inner back of turned angles, drawn under the PFP. */
+  back: HTMLImageElement | null;
   mask: AlphaMask;
 }
 
@@ -58,10 +60,10 @@ export function glassesBox(state: PfpState, size: number): LayerBox {
 
 export function bodyBox(state: PfpState, size: number, angle: BodyAngle = state.angle): LayerBox {
   const kit = BODIES[angle];
-  const w = (DEFAULTS.body.ringW * size) / kit.ringW;
+  const w = (DEFAULTS.body.moduleH * size) / kit.moduleH;
   const h = w * kit.aspect;
   const anchor = new DOMMatrix().translate(DEFAULTS.body.cx * size, DEFAULTS.body.cy * size);
-  return { matrix: apply(anchor, size, state.transforms.body), x: -w * kit.collar.cx, y: -h * kit.collar.cy, w, h };
+  return { matrix: apply(anchor, size, state.transforms.body), x: -w * kit.anchor.cx, y: -h * kit.anchor.cy, w, h };
 }
 
 export function pfpBox(state: PfpState, size: number, image: UserImage): LayerBox {
@@ -188,9 +190,13 @@ export function drawPfp(
   ctx.imageSmoothingQuality = "high";
   drawBackground(ctx, size);
 
+  // background → armor inner back → PFP → armor front → glasses. The PFP is
+  // never masked: its head simply sits over the open top of the frame.
+  const body = state.bodyOn ? bodies[state.angle] : undefined;
+  const box = body ? bodyBox(state, size) : null;
+  if (body?.back && box) drawBox(ctx, box, body.back, options.bodyAlpha ?? 1);
   if (image) drawBox(ctx, pfpBox(state, size, image), image);
-  const body = bodies[state.angle];
-  if (state.bodyOn && body) drawBox(ctx, bodyBox(state, size), body.image, options.bodyAlpha ?? 1);
+  if (body && box) drawBox(ctx, box, body.image, options.bodyAlpha ?? 1);
   drawGlasses(ctx, kit, glassesBox(state, size), state.glass);
   ctx.restore();
 }
@@ -244,6 +250,7 @@ export async function loadKit(): Promise<Kit> {
 }
 
 export async function loadBody(angle: BodyAngle): Promise<LoadedBody> {
-  const image = await loadImage(BODIES[angle].src);
-  return { image, mask: alphaMask(image) };
+  const kit = BODIES[angle];
+  const [image, back] = await Promise.all([loadImage(kit.src), kit.back ? loadImage(kit.back) : null]);
+  return { image, back, mask: alphaMask(image) };
 }

@@ -37,43 +37,54 @@ export const VISOR = {
 
 export const VISOR_GLASS_W = VISOR.glass.x1 - VISOR.glass.x0;
 
+/**
+ * The body is a universal lower frame, not a fitted torso: broad shoulders and
+ * a low chest with a wide open top, so any head (human, anime, animal, meme)
+ * sits over it without a neck socket. It draws over the PFP; turned angles
+ * also carry the armor's inner back, which draws under the PFP.
+ */
 export interface BodyKit {
   label: string;
+  /** Front layer, drawn over the PFP. */
   src: string;
+  /** Inner back seen through the open top of turned angles, drawn under the PFP. */
+  back?: string;
   thumb: string;
   aspect: number;
-  /** Centre of the collar's front lip, in body fractions: the anchor. */
-  collar: { cx: number; cy: number };
-  /** Collar ring width / body width. The ring is a horizontal circle, so its width survives rotation: it is the shared scale. */
-  ringW: number;
+  /** Lowest point of the open top (where a chin sits), in body fractions: the anchor. */
+  anchor: { cx: number; cy: number };
+  /** Chest-module height / body width. Turning about the vertical axis keeps heights, so this is the shared scale. */
+  moduleH: number;
 }
 
-const body = (angle: BodyAngle, label: string, w: number, h: number, cx: number, cy: number, ringW: number): BodyKit => ({
+const body = (angle: BodyAngle, label: string, w: number, h: number, cx: number, cy: number, moduleH: number, back = false): BodyKit => ({
   label,
   src: `/pfp-kit/body/body-${angle}.webp`,
+  back: back ? `/pfp-kit/body/body-${angle}-back.webp` : undefined,
   thumb: `/pfp-kit/previews/body-${angle}.webp`,
   aspect: h / w,
-  collar: { cx, cy },
-  ringW,
+  anchor: { cx, cy },
+  moduleH,
 });
 
 export const BODY_ANGLES: BodyAngle[] = ["left", "left-34", "front", "right-34", "right"];
 
 export const BODIES: Record<BodyAngle, BodyKit> = {
-  front: body("front", "Front", 2048, 1302, 0.5, 0.0939, 0.2779),
-  "right-34": body("right-34", "Right ¾", 2048, 1479, 0.5451, 0.1005, 0.314),
-  "left-34": body("left-34", "Left ¾", 2048, 1477, 0.4512, 0.0999, 0.3028),
-  right: body("right", "Right", 2048, 1775, 0.6189, 0.1107, 0.3325),
-  left: body("left", "Left", 2048, 1779, 0.3741, 0.0975, 0.3367),
+  front: body("front", "Front", 2048, 971, 0.5009, 0.4145, 0.03431),
+  "right-34": body("right-34", "Right ¾", 2048, 1014, 0.568, 0.4188, 0.03474),
+  "left-34": body("left-34", "Left ¾", 2048, 1022, 0.4868, 0.3684, 0.03297),
+  right: body("right", "Right", 2048, 1154, 0.7506, 0.453, 0.03861, true),
+  left: body("left", "Left", 2048, 1347, 0.2956, 0.4237, 0.0435, true),
 };
 
 /**
  * Default fit for a typical centred portrait: glasses across the eyes at ~40%
- * height, the collar lip at the base of the neck, the chest mark in frame.
+ * height; the armor sits low (open top at 77%, shoulders at the canvas edges)
+ * so the face and jaw stay clear and the chest mark stays in frame.
  */
 export const DEFAULTS = {
   glasses: { cx: 0.5, cy: 0.405, glassW: 0.46 },
-  body: { cx: 0.5, cy: 0.75, ringW: 0.3 },
+  body: { cx: 0.5, cy: 0.77, moduleH: 0.039 },
   glass: 0.74,
   angle: "front" as BodyAngle,
 };

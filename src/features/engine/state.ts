@@ -30,20 +30,22 @@ export function freshState(selected: LayerId = "userPfp"): PfpState {
   };
 }
 
-const LIMITS = {
-  offset: 0.7,
-  scale: { userPfp: [0.4, 4], kit: [0.35, 2.6] },
-} as const;
+/** Scale and offset (stage fractions) limits per layer. Head sizes vary wildly, so the body gets a wide range. */
+export const LIMITS: Record<LayerId, { scale: [number, number]; offset: number }> = {
+  userPfp: { scale: [0.4, 4], offset: 0.7 },
+  glasses: { scale: [0.35, 2.6], offset: 0.7 },
+  body: { scale: [0.25, 3.5], offset: 0.9 },
+};
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export function clean(id: LayerId, t: Transform): Transform {
-  const [lo, hi] = id === "userPfp" ? LIMITS.scale.userPfp : LIMITS.scale.kit;
+  const { scale: [lo, hi], offset } = LIMITS[id];
   let rotation = ((((t.rotation + 180) % 360) + 360) % 360) - 180;
   if (Math.abs(rotation) < 0.01) rotation = 0;
   return {
-    x: clamp(t.x, -LIMITS.offset, LIMITS.offset),
-    y: clamp(t.y, -LIMITS.offset, LIMITS.offset),
+    x: clamp(t.x, -offset, offset),
+    y: clamp(t.y, -offset, offset),
     scale: clamp(t.scale, lo, hi),
     rotation,
   };
