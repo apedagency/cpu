@@ -25,7 +25,11 @@ const noopSubscribe = () => () => {};
 const readSeen = () => document.documentElement.dataset.intro === "seen";
 
 /** Assets the hero needs before the intro may settle. */
-const CRITICAL_IMAGES = ["/art/character/hero.webp", "/loader/cpu-glass-shade.svg"];
+const criticalImages = () => [
+  // Same URL the hero paints (served as-is), so this decode warms the real image.
+  "/hero/hero-character-main.webp",
+  "/loader/cpu-glass-shade.svg",
+];
 
 const markDataUri = `data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${HYPERLIQUID_VIEWBOX}"><path fill="#fff" d="${HYPERLIQUID_PATH}"/></svg>`,
@@ -135,7 +139,7 @@ export function SiteLoader() {
     lockScroll("loader");
 
     let cancelled = false;
-    const decode = CRITICAL_IMAGES.map((src) => {
+    const decode = criticalImages().map((src) => {
       const img = new window.Image();
       img.src = src;
       return img.decode().catch(() => undefined);
@@ -201,7 +205,7 @@ export function SiteLoader() {
         ref={glassRef}
         className="pointer-events-none fixed left-1/2 top-1/2 aspect-[1200/520] w-[min(62vw,42rem)] -translate-x-1/2 -translate-y-1/2 opacity-0"
       >
-        <Image src="/loader/cpu-glass-shade.svg" alt="" fill priority sizes="(max-width: 768px) 62vw, 42rem" />
+        <Image src="/loader/cpu-glass-shade.svg" alt="" fill preload sizes="(max-width: 768px) 62vw, 42rem" />
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-(--gutter) text-paper/70">
         <span className="type-label text-paper/60">{site.name}</span>
