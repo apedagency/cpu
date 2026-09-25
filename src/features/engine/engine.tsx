@@ -2,7 +2,8 @@
 
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import gsap from "gsap";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Cat, Download, Glasses, ImagePlus, Link2, RotateCcw, ScanFace, Shirt, Unlink } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Download, Eye, EyeOff, Glasses, ImagePlus, RotateCcw, ScanFace, Shirt } from "lucide-react";
+import Image from "next/image";
 import {
   useCallback,
   useEffect,
@@ -16,12 +17,13 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ToolbarDynamic, type ToolbarItem } from "@/components/ui/toolbar-dynamic";
 import { useFinePointer, useReducedMotion } from "@/hooks/use-media";
 import { cn } from "@/lib/utils";
-import { drawPfp, hitTest, layerBoxes, loadKit, type Kit, type LayerBox, type UserImage } from "./compose";
-import { ACCEPTED_TYPES, DEFAULTS, EXPORT_SIZE, MAX_UPLOAD_BYTES, type LayerId } from "./manifest";
-import { clean, freshState, IDENTITY, resetLayer, targetOf, type PfpState, type Transform, type TransformId } from "./state";
+import { drawPfp, hitTest, loadBody, loadKit, outlineBox, type Bodies, type Kit, type UserImage } from "./compose";
+import { ACCEPTED_TYPES, BODIES, BODY_ANGLES, DEFAULTS, EXPORT_SIZE, MAX_UPLOAD_BYTES, type BodyAngle, type LayerId } from "./manifest";
+import { clean, freshState, resetLayer, type PfpState, type Transform } from "./state";
 
 const deg = (rad: number) => (rad * 180) / Math.PI;
 /** Preview backing-store cap; export always renders at EXPORT_SIZE. */
@@ -66,43 +68,20 @@ async function decodeUpload(file: File): Promise<UserImage> {
 /* ------------------------------------------------------------------ */
 
 function frameFor(state: PfpState, size: number, image: UserImage | null): DOMPoint[] | null {
-  const boxes = layerBoxes(state, size, image);
-  const corners = (b: LayerBox) =>
-    [
-      [b.x, b.y],
-      [b.x + b.w, b.y],
-      [b.x + b.w, b.y + b.h],
-      [b.x, b.y + b.h],
-    ].map(([x, y]) => b.matrix.transformPoint(new DOMPoint(x, y)));
-  const target = targetOf(state.selected, state.linked);
-  if (target === "userPfp") return null;
-  if (target !== "head") return corners(boxes[target as LayerId]!);
-  // Head kit: bounds of crown + visor, measured in the head frame so the
-  // frame rotates with the kit.
-  const t = state.transforms.head;
-  const head = new DOMMatrix()
-    .translate(DEFAULTS.head.cx * size, DEFAULTS.head.cy * size)
-    .translate(t.x * size, t.y * size)
-    .rotate(t.rotation)
-    .scale(t.scale);
-  const inv = head.inverse();
-  const pts = [...corners(boxes.helmet!), ...corners(boxes.visor!)].map((p) => inv.transformPoint(p));
-  const xs = pts.map((p) => p.x);
-  const ys = pts.map((p) => p.y);
-  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  if (state.selected === "userPfp") return null;
+  const b = outlineBox(state.selected, state, size, image);
+  if (!b) return null;
   return [
-    [x0, y0],
-    [x1, y0],
-    [x1, y1],
-    [x0, y1],
-  ].map(([x, y]) => head.transformPoint(new DOMPoint(x, y)));
+    [b.x, b.y],
+    [b.x + b.w, b.y],
+    [b.x + b.w, b.y + b.h],
+    [b.x, b.y + b.h],
+  ].map(([x, y]) => b.matrix.transformPoint(new DOMPoint(x, y)));
 }
 
-/** Pivot (canvas px) of the transform a gesture edits. */
-function pivotFor(state: PfpState, target: TransformId, size: number, image: UserImage | null) {
-  const t = state.transforms.head;
-  if (target === "head") return new DOMPoint((DEFAULTS.head.cx + t.x) * size, (DEFAULTS.head.cy + t.y) * size);
-  const box = layerBoxes(state, size, image)[target as LayerId];
+/** Pivot (canvas px) of a layer: the eye line for the glasses, the collar for the body, the centre for the PFP. */
+function pivotFor(state: PfpState, layer: LayerId, size: number, image: UserImage | null) {
+  const box = outlineBox(layer, state, size, image);
   return box ? box.matrix.transformPoint(new DOMPoint(0, 0)) : new DOMPoint(size / 2, size / 2);
 }
 
@@ -201,7 +180,7 @@ function PanelFoot({ onReset, children }: { onReset: () => void; children?: Reac
 
 type Drag = {
   pointer: number;
-  target: TransformId;
+  target: LayerId;
   mode: "move" | "handle";
   startX: number;
   startY: number;
@@ -212,13 +191,14 @@ type Drag = {
   base: Transform;
 };
 
-type Pinch = { target: TransformId; dist: number; angle: number; mid: { x: number; y: number }; base: Transform };
+type Pinch = { target: LayerId; dist: number; angle: number; mid: { x: number; y: number }; base: Transform };
 
 export function Engine() {
   const reduced = useReducedMotion();
   const fine = useFinePointer();
-  const [state, setState] = useState<PfpState>(freshState);
+  const [state, setState] = useState<PfpState>(() => freshState());
   const [kit, setKit] = useState<Kit | null>(null);
+  const [bodies, setBodies] = useState<Bodies>({});
   const [kitError, setKitError] = useState(false);
   const [image, setImage] = useState<UserImage | null>(null);
   const [fileName, setFileName] = useState("");
@@ -240,15 +220,31 @@ export function Engine() {
   useLayoutEffect(() => {
     stateRef.current = state;
   }, [state]);
+  const bodiesRef = useRef(bodies);
+  useLayoutEffect(() => {
+    bodiesRef.current = bodies;
+  }, [bodies]);
+  const bodyLoads = useRef(new Map<BodyAngle, Promise<void>>());
   const dragRef = useRef<Drag | null>(null);
   const pinchRef = useRef<Pinch | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const pending = useRef<{ id: TransformId; t: Transform } | null>(null);
+  const pending = useRef<{ id: LayerId; t: Transform } | null>(null);
   const frame = useRef(0);
   /** Entrance: 0 → 1 as the kit assembles in the empty stage. */
   const assemble = useRef(reduced ? 1 : 0);
 
-  // Load the kit only when the section approaches the viewport.
+  /** Load one armor angle once; resolves when it can be drawn. */
+  const ensureBody = useCallback((angle: BodyAngle) => {
+    let job = bodyLoads.current.get(angle);
+    if (!job) {
+      job = loadBody(angle).then((loaded) => setBodies((prev) => ({ ...prev, [angle]: loaded })));
+      job.catch(() => bodyLoads.current.delete(angle));
+      bodyLoads.current.set(angle, job);
+    }
+    return job;
+  }, []);
+
+  // Load the kit (glasses + front armor) only when the section approaches the viewport.
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -257,8 +253,8 @@ export function Engine() {
       ([entry]) => {
         if (!entry?.isIntersecting) return;
         io.disconnect();
-        loadKit()
-          .then((k) => alive && setKit(k))
+        Promise.all([loadKit(), ensureBody(DEFAULTS.angle)])
+          .then(([k]) => alive && setKit(k))
           .catch(() => alive && setKitError(true));
       },
       { rootMargin: "800px 0px" },
@@ -268,7 +264,22 @@ export function Engine() {
       alive = false;
       io.disconnect();
     };
-  }, []);
+  }, [ensureBody]);
+
+  // Once someone is wearing it, fetch the other armor angles in the background.
+  useEffect(() => {
+    if (!image || !kit) return;
+    let cancelled = false;
+    (async () => {
+      for (const angle of BODY_ANGLES) {
+        if (cancelled) return;
+        await ensureBody(angle).catch(() => undefined);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [image, kit, ensureBody]);
 
   const paint = useCallback(() => {
     const canvas = canvasRef.current;
@@ -283,43 +294,47 @@ export function Engine() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     let s = stateRef.current;
+    let bodyAlpha = 1;
     if (!image) {
-      // Empty stage: the kit opens a gap where the wearer's face goes.
+      // Empty stage: the glasses float over an open face zone, the armor waits
+      // below. Small stages lift them further so the upload prompt fits between.
+      const compact = css < 560;
       s = {
         ...s,
         transforms: {
           ...s.transforms,
-          head: { ...s.transforms.head, y: s.transforms.head.y - 0.05 },
-          body: { ...s.transforms.body, y: s.transforms.body.y + 0.07 },
+          glasses: { ...s.transforms.glasses, y: s.transforms.glasses.y - (compact ? 0.13 : 0.09), scale: compact ? 0.92 : 1.08 },
+          body: { ...s.transforms.body, y: s.transforms.body.y + 0.09 },
         },
       };
+      bodyAlpha = 0.5;
     }
     const a = assemble.current;
     if (a < 1) {
-      // The kit drops into place: crown from above, collar from below.
+      // The kit drops into place: glasses from above, armor from below.
       const e = 1 - a;
       s = {
         ...s,
         transforms: {
           ...s.transforms,
-          head: { ...s.transforms.head, y: s.transforms.head.y - 0.12 * e * e },
+          glasses: { ...s.transforms.glasses, y: s.transforms.glasses.y - 0.12 * e * e },
           body: { ...s.transforms.body, y: s.transforms.body.y + 0.14 * e * e },
         },
         glass: s.glass * a,
       };
     }
-    drawPfp(ctx, px, s, kit, image);
+    drawPfp(ctx, px, s, kit, bodiesRef.current, image, { bodyAlpha });
     if (a < 1) {
       ctx.fillStyle = `rgba(3, 22, 19, ${(1 - a) * 0.9})`;
       ctx.fillRect(0, 0, px, px);
     }
   }, [kit, image]);
 
-  // Repaint on any state/image change, batched to one frame.
+  // Repaint on any state/image/armor change, batched to one frame.
   useEffect(() => {
     const raf = requestAnimationFrame(paint);
     return () => cancelAnimationFrame(raf);
-  }, [paint, state]);
+  }, [paint, state, bodies]);
 
   // Keep the backing store matched to the displayed size.
   useEffect(() => {
@@ -377,12 +392,12 @@ export function Engine() {
     };
   }, [image, reduced]);
 
-  const commit = useCallback((id: TransformId, t: Transform) => {
+  const commit = useCallback((id: LayerId, t: Transform) => {
     setState((prev) => ({ ...prev, transforms: { ...prev.transforms, [id]: clean(id, t) } }));
   }, []);
 
   const schedule = useCallback(
-    (id: TransformId, t: Transform) => {
+    (id: LayerId, t: Transform) => {
       pending.current = { id, t };
       if (frame.current) return;
       frame.current = requestAnimationFrame(() => {
@@ -413,7 +428,8 @@ export function Engine() {
       setImage(decoded);
       setFileName(file.name);
       setEngaged(false);
-      setState((prev) => ({ ...prev, selected: "visor", transforms: { ...prev.transforms, userPfp: { ...IDENTITY } } }));
+      // Wear CPU straight away: glasses on, front armor on, default fit.
+      setState(freshState("glasses"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "That image could not be decoded.");
     }
@@ -425,18 +441,6 @@ export function Engine() {
     const rect = stageRef.current!.getBoundingClientRect();
     const size = canvasRef.current?.width || rect.width;
     return { x: ((clientX - rect.left) / rect.width) * size, y: ((clientY - rect.top) / rect.height) * size, size, rect };
-  };
-
-  /** Screen delta → the target's own offset space (locals live in the head frame). */
-  const toOffset = (target: TransformId, dx: number, dy: number, width: number) => {
-    let x = dx / width;
-    let y = dy / width;
-    if (target === "visor" || target === "helmet") {
-      const h = stateRef.current.transforms.head;
-      const r = (-h.rotation * Math.PI) / 180;
-      [x, y] = [(x * Math.cos(r) - y * Math.sin(r)) / h.scale, (x * Math.sin(r) + y * Math.cos(r)) / h.scale];
-    }
-    return { x, y };
   };
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -451,7 +455,7 @@ export function Engine() {
 
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
-      const target = dragRef.current?.target ?? targetOf(s.selected, s.linked);
+      const target = dragRef.current?.target ?? s.selected;
       pinchRef.current = {
         target,
         dist: Math.hypot(b.x - a.x, b.y - a.y),
@@ -465,16 +469,15 @@ export function Engine() {
 
     const handle = (e.target as HTMLElement).closest("[data-handle]");
     const p = toCanvas(e.clientX, e.clientY);
-    const layer = handle ? s.selected : hitTest(kit, s, p.size, image, p.x, p.y) ?? "userPfp";
+    const layer = handle ? s.selected : hitTest(kit, bodiesRef.current, s, p.size, image, p.x, p.y) ?? "userPfp";
     if (layer !== s.selected) setState((prev) => ({ ...prev, selected: layer }));
-    const target = targetOf(layer, s.linked);
-    const pivot = pivotFor(s, target, p.size, image);
+    const pivot = pivotFor(s, layer, p.size, image);
     const k = p.rect.width / p.size;
     const pivotX = p.rect.left + pivot.x * k;
     const pivotY = p.rect.top + pivot.y * k;
     dragRef.current = {
       pointer: e.pointerId,
-      target,
+      target: layer,
       mode: handle ? "handle" : "move",
       startX: e.clientX,
       startY: e.clientY,
@@ -482,7 +485,7 @@ export function Engine() {
       pivotY,
       startDist: Math.max(1, Math.hypot(e.clientX - pivotX, e.clientY - pivotY)),
       startAngle: Math.atan2(e.clientY - pivotY, e.clientX - pivotX),
-      base: s.transforms[target],
+      base: s.transforms[layer],
     };
   };
 
@@ -494,10 +497,9 @@ export function Engine() {
     if (pinch && pointers.current.size >= 2) {
       const [a, b] = [...pointers.current.values()];
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-      const off = toOffset(pinch.target, mid.x - pinch.mid.x, mid.y - pinch.mid.y, width);
       schedule(pinch.target, {
-        x: pinch.base.x + off.x,
-        y: pinch.base.y + off.y,
+        x: pinch.base.x + (mid.x - pinch.mid.x) / width,
+        y: pinch.base.y + (mid.y - pinch.mid.y) / width,
         scale: pinch.base.scale * (Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)) / pinch.dist),
         rotation: pinch.base.rotation + deg(Math.atan2(b.y - a.y, b.x - a.x) - pinch.angle),
       });
@@ -506,8 +508,7 @@ export function Engine() {
     const drag = dragRef.current;
     if (!drag || drag.pointer !== e.pointerId) return;
     if (drag.mode === "move") {
-      const off = toOffset(drag.target, e.clientX - drag.startX, e.clientY - drag.startY, width);
-      schedule(drag.target, { ...drag.base, x: drag.base.x + off.x, y: drag.base.y + off.y });
+      schedule(drag.target, { ...drag.base, x: drag.base.x + (e.clientX - drag.startX) / width, y: drag.base.y + (e.clientY - drag.startY) / width });
     } else {
       const dist = Math.max(1, Math.hypot(e.clientX - drag.pivotX, e.clientY - drag.pivotY));
       let rotation = drag.base.rotation + deg(Math.atan2(e.clientY - drag.pivotY, e.clientX - drag.pivotX) - drag.startAngle);
@@ -532,9 +533,8 @@ export function Engine() {
       if (!e.ctrlKey || !image) return;
       e.preventDefault();
       const s = stateRef.current;
-      const target = targetOf(s.selected, s.linked);
-      const t = s.transforms[target];
-      commit(target, { ...t, scale: t.scale * Math.exp(-e.deltaY * 0.01) });
+      const t = s.transforms[s.selected];
+      commit(s.selected, { ...t, scale: t.scale * Math.exp(-e.deltaY * 0.01) });
     };
     stage.addEventListener("wheel", onWheel, { passive: false });
     return () => stage.removeEventListener("wheel", onWheel);
@@ -549,8 +549,7 @@ export function Engine() {
       return;
     }
     const s = stateRef.current;
-    const target = targetOf(s.selected, s.linked);
-    const t = s.transforms[target];
+    const t = s.transforms[s.selected];
     const step = e.shiftKey ? 0.05 : 0.01;
     const changes: Record<string, Partial<Transform>> = {
       ArrowLeft: { x: t.x - step },
@@ -567,7 +566,7 @@ export function Engine() {
     if (!change) return;
     e.preventDefault();
     setEngaged(true);
-    commit(target, { ...t, ...change });
+    commit(s.selected, { ...t, ...change });
   };
 
   /* ------------------------------- export ------------------------------- */
@@ -576,12 +575,13 @@ export function Engine() {
     if (!kit || !image) return;
     setExporting(true);
     try {
+      await ensureBody(stateRef.current.angle);
       const canvas = document.createElement("canvas");
       canvas.width = EXPORT_SIZE;
       canvas.height = EXPORT_SIZE;
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas is unavailable.");
-      drawPfp(ctx, EXPORT_SIZE, stateRef.current, kit, image);
+      drawPfp(ctx, EXPORT_SIZE, stateRef.current, kit, bodiesRef.current, image);
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("Export failed.");
       const url = URL.createObjectURL(blob);
@@ -602,38 +602,26 @@ export function Engine() {
   /* ------------------------------ controls ------------------------------ */
 
   const edit = (layer: LayerId, change: Partial<Transform>) => {
-    const s = stateRef.current;
-    const target = targetOf(layer, s.linked);
     setEngaged(true);
-    commit(target, { ...s.transforms[target], ...change });
+    commit(layer, { ...stateRef.current.transforms[layer], ...change });
   };
   const nudge = (layer: LayerId) => (dx: number, dy: number) => {
     setEngaged(true);
     setState((prev) => {
-      const target = targetOf(layer, prev.linked);
-      const t = prev.transforms[target];
-      return { ...prev, transforms: { ...prev.transforms, [target]: clean(target, { ...t, x: t.x + dx, y: t.y + dy }) } };
+      const t = prev.transforms[layer];
+      return { ...prev, transforms: { ...prev.transforms, [layer]: clean(layer, { ...t, x: t.x + dx, y: t.y + dy }) } };
     });
   };
   const reset = (layer: LayerId) => setState((prev) => resetLayer(prev, layer));
-  const tf = (layer: LayerId) => state.transforms[targetOf(layer, state.linked)];
+  const chooseAngle = (angle: BodyAngle) => {
+    setEngaged(true);
+    void ensureBody(angle)
+      .then(() => setState((prev) => ({ ...prev, angle, bodyOn: true, selected: "body" })))
+      .catch(() => setError("That armor angle could not load. Try again."));
+  };
   const pct = (v: number) => `${Math.round(v * 100)}%`;
   const degf = (v: number) => `${Math.round(v)}°`;
-
-  const linkToggle = (
-    <button
-      type="button"
-      aria-pressed={state.linked}
-      onClick={() => setState((prev) => ({ ...prev, linked: !prev.linked }))}
-      className={cn(
-        "inline-flex min-h-11 items-center gap-1.5 text-xs font-medium transition-colors",
-        state.linked ? "text-mint" : "text-paper/55 hover:text-paper",
-      )}
-    >
-      {state.linked ? <Link2 className="size-3.5" aria-hidden="true" /> : <Unlink className="size-3.5" aria-hidden="true" />}
-      {state.linked ? "Visor + helmet fit together" : "Fitting separately"}
-    </button>
-  );
+  const tf = state.transforms;
 
   const items: ToolbarItem[] = [
     {
@@ -642,34 +630,22 @@ export function Engine() {
       icon: <ScanFace />,
       content: (
         <div className="flex flex-col gap-1">
-          <Control label="Scale" value={tf("userPfp").scale} min={0.4} max={4} step={0.01} format={pct} onChange={(v) => edit("userPfp", { scale: v })} />
+          <Control label="Scale" value={tf.userPfp.scale} min={0.4} max={4} step={0.01} format={pct} onChange={(v) => edit("userPfp", { scale: v })} />
           <Nudge onNudge={nudge("userPfp")} />
           <PanelFoot onReset={() => reset("userPfp")} />
         </div>
       ),
     },
     {
-      id: "visor",
-      label: "Visor",
+      id: "glasses",
+      label: "Glasses",
       icon: <Glasses />,
       content: (
         <div className="flex flex-col gap-1">
-          <Control label="Scale" value={tf("visor").scale} min={0.35} max={2.4} step={0.01} format={pct} onChange={(v) => edit("visor", { scale: v })} />
-          <Control label="Rotate" value={tf("visor").rotation} min={-45} max={45} step={1} format={degf} onChange={(v) => edit("visor", { rotation: v })} />
+          <Control label="Scale" value={tf.glasses.scale} min={0.35} max={2.6} step={0.01} format={pct} onChange={(v) => edit("glasses", { scale: v })} />
+          <Control label="Rotate" value={tf.glasses.rotation} min={-45} max={45} step={1} format={degf} onChange={(v) => edit("glasses", { rotation: v })} />
           <Control label="Glass" value={state.glass} min={0.35} max={1} step={0.01} format={pct} onChange={(v) => setState((prev) => ({ ...prev, glass: v }))} />
-          <PanelFoot onReset={() => reset("visor")}>{linkToggle}</PanelFoot>
-        </div>
-      ),
-    },
-    {
-      id: "helmet",
-      label: "Helmet",
-      icon: <Cat />,
-      content: (
-        <div className="flex flex-col gap-1">
-          <Control label="Scale" value={tf("helmet").scale} min={0.35} max={2.4} step={0.01} format={pct} onChange={(v) => edit("helmet", { scale: v })} />
-          <Control label="Rotate" value={tf("helmet").rotation} min={-45} max={45} step={1} format={degf} onChange={(v) => edit("helmet", { rotation: v })} />
-          <PanelFoot onReset={() => reset("helmet")}>{linkToggle}</PanelFoot>
+          <PanelFoot onReset={() => reset("glasses")} />
         </div>
       ),
     },
@@ -678,10 +654,45 @@ export function Engine() {
       label: "Body",
       icon: <Shirt />,
       content: (
-        <div className="flex flex-col gap-1">
-          <Control label="Scale" value={tf("body").scale} min={0.35} max={2.4} step={0.01} format={pct} onChange={(v) => edit("body", { scale: v })} />
-          <Nudge onNudge={nudge("body")} />
-          <PanelFoot onReset={() => reset("body")} />
+        <div className="flex flex-col gap-2">
+          <SegmentedControl
+            label="Armor angle"
+            value={state.angle}
+            onValueChange={(v) => chooseAngle(v as BodyAngle)}
+            className={cn(!state.bodyOn && "opacity-60")}
+            options={BODY_ANGLES.map((angle) => ({
+              value: angle,
+              label: BODIES[angle].label,
+              media: (
+                <Image
+                  src={BODIES[angle].thumb}
+                  alt=""
+                  width={240}
+                  height={180}
+                  sizes="80px"
+                  className="pointer-events-none aspect-4/3 w-full max-w-18 object-contain"
+                />
+              ),
+            }))}
+          />
+          <div className="flex flex-col gap-1">
+            <Control label="Scale" value={tf.body.scale} min={0.35} max={2.6} step={0.01} format={pct} onChange={(v) => edit("body", { scale: v })} />
+            <Nudge onNudge={nudge("body")} />
+          </div>
+          <PanelFoot onReset={() => reset("body")}>
+            <button
+              type="button"
+              aria-pressed={state.bodyOn}
+              onClick={() => setState((prev) => ({ ...prev, bodyOn: !prev.bodyOn }))}
+              className={cn(
+                "inline-flex min-h-11 items-center gap-1.5 text-xs font-medium transition-colors",
+                state.bodyOn ? "text-mint" : "text-paper/55 hover:text-paper",
+              )}
+            >
+              {state.bodyOn ? <Eye className="size-3.5" aria-hidden="true" /> : <EyeOff className="size-3.5" aria-hidden="true" />}
+              {state.bodyOn ? "Armor on" : "Armor off"}
+            </button>
+          </PanelFoot>
         </div>
       ),
     },
@@ -689,9 +700,16 @@ export function Engine() {
 
   // Layer geometry is linear in stage size, so measure straight in CSS px.
   const frameCss = useMemo(() => (image && cssSize ? frameFor(state, cssSize, image) : null), [state, image, cssSize]);
+  // The resize handle sits on the corner that stays on the stage (the armor runs off the bottom).
+  const handleCss = useMemo(() => {
+    if (!frameCss) return null;
+    const p = frameCss[state.selected === "body" ? 1 : 2];
+    const clampTo = (v: number) => Math.min(cssSize - 16, Math.max(16, v));
+    return { x: clampTo(p.x), y: clampTo(p.y) };
+  }, [frameCss, state.selected, cssSize]);
 
   const showFrame = !!frameCss && (hover || interacting || panelOpen);
-  const layerName = { userPfp: "PFP", visor: "Visor", helmet: "Helmet", body: "Body" }[state.selected];
+  const layerName = { userPfp: "PFP", glasses: "Glasses", body: "Body" }[state.selected];
 
   return (
     <section
@@ -714,8 +732,9 @@ export function Engine() {
           <ol className="flex flex-col gap-3 text-[0.95rem] text-paper/70 max-lg:hidden">
             {[
               ["01", "Upload your PFP"],
-              ["02", "Drag the kit into place"],
-              ["03", `Export a ${EXPORT_SIZE} px PNG`],
+              ["02", "Wear CPU: glasses and armor"],
+              ["03", "Adjust the fit"],
+              ["04", `Export a ${EXPORT_SIZE} px PNG`],
             ].map(([n, t]) => (
               <li key={n} className="flex items-baseline gap-4">
                 <span className="font-mono text-[0.6875rem] text-mint/70">{n}</span>
@@ -773,7 +792,7 @@ export function Engine() {
             <canvas ref={canvasRef} className="absolute inset-0 size-full" aria-hidden="true" />
             {!kit && !kitError && <div className="skeleton absolute inset-0" aria-hidden="true" />}
 
-            {showFrame && frameCss && (
+            {showFrame && frameCss && handleCss && (
               <>
                 <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
                   <polygon
@@ -788,7 +807,7 @@ export function Engine() {
                   data-handle
                   aria-hidden="true"
                   className="absolute z-10 grid size-11 -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize place-items-center"
-                  style={{ left: frameCss[2].x, top: frameCss[2].y }}
+                  style={{ left: handleCss.x, top: handleCss.y }}
                 >
                   <span className="size-3.5 rounded-full border-2 border-teal bg-ink-1 shadow-[0_0_14px_var(--cpu-teal)]" />
                 </span>
@@ -796,16 +815,15 @@ export function Engine() {
             )}
 
             {!image && kit && (
-              <div className="pointer-events-none absolute inset-x-0 top-[61%] flex -translate-y-1/2 flex-col items-center gap-3 px-6 text-center">
-                <span className="grid size-14 place-items-center rounded-full bg-teal text-ink-1 shadow-[0_0_48px_-6px_var(--cpu-teal)] transition-shadow duration-300 group-hover:shadow-[0_0_64px_-2px_var(--cpu-teal)]">
-                  <ImagePlus className="size-6" aria-hidden="true" />
+              <div className="pointer-events-none absolute inset-x-0 top-[59%] flex -translate-y-1/2 flex-col items-center gap-1.5 px-6 text-center sm:top-[57%] sm:gap-2.5">
+                <span className="grid size-11 place-items-center sm:size-14 rounded-full bg-teal text-ink-1 shadow-[0_0_48px_-6px_var(--cpu-teal)] transition-shadow duration-300 group-hover:shadow-[0_0_64px_-2px_var(--cpu-teal)]">
+                  <ImagePlus className="size-5 sm:size-6" aria-hidden="true" />
                 </span>
-                <span className="text-[clamp(1.35rem,2.6vw,2rem)] font-semibold tracking-[-0.02em] text-paper [text-shadow:0_2px_24px_rgba(0,0,0,0.8)]">
+                <span className="text-[clamp(1.25rem,2.6vw,2rem)] font-semibold tracking-[-0.02em] text-paper [text-shadow:0_2px_24px_rgba(0,0,0,0.8)]">
                   {dragOver ? "Drop to put it on" : "Upload your PFP"}
                 </span>
-                <span className="text-xs text-paper/55 [text-shadow:0_1px_12px_rgba(0,0,0,0.9)]">
-                  Drop, paste or choose · PNG, JPEG, WebP up to 20 MB
-                </span>
+                <span className="text-sm text-paper/70 [text-shadow:0_1px_12px_rgba(0,0,0,0.9)]">PNG, JPEG or WebP</span>
+                <span className="text-[0.6875rem] text-paper/40 [text-shadow:0_1px_12px_rgba(0,0,0,0.9)] max-sm:hidden">Up to 20 MB · drop or paste works too</span>
               </div>
             )}
 
@@ -814,7 +832,7 @@ export function Engine() {
                 data-stage-ui
                 className="pointer-events-none absolute left-1/2 top-3 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-sm bg-ink-1/70 px-3 py-1.5 text-center text-xs font-medium text-paper/85 backdrop-blur-md"
               >
-                {fine ? "Drag the glass onto your eyes · the corner dot resizes it" : "Drag the glass onto your eyes · pinch to resize"}
+                {fine ? "Drag the glasses onto your eyes · the corner dot resizes and turns them" : "Drag the glasses onto your eyes · pinch to resize"}
               </p>
             )}
           </div>
@@ -832,8 +850,9 @@ export function Engine() {
           />
 
           {image && (
-            <div className="relative z-20 mx-auto -mt-5 w-fit max-w-full lg:absolute lg:bottom-0 lg:left-1/2 lg:mt-0 lg:-translate-x-1/2 lg:translate-y-6">
-              {/* GSAP animates this inner box; the outer one owns CSS positioning. */}
+            <div className="relative z-20 mx-auto -mt-5 w-fit max-w-full">
+              {/* GSAP animates this inner box; the outer one owns CSS positioning. Panels
+                  open below the stage so the layer being adjusted stays in view. */}
               <div ref={dockRef}>
               <ToolbarDynamic
                 label="PFP layers"
@@ -842,7 +861,7 @@ export function Engine() {
                 open={panelOpen}
                 onSelect={(id) => setState((prev) => ({ ...prev, selected: id as LayerId }))}
                 onOpenChange={setPanelOpen}
-                className="w-[min(100vw_-_2rem,30rem)] max-lg:flex-col-reverse"
+                className="w-[min(100vw_-_2rem,30rem)] flex-col-reverse"
                 leading={
                   <button
                     type="button"
@@ -870,7 +889,7 @@ export function Engine() {
             </div>
           )}
 
-          <div className={cn("flex min-h-5 items-center justify-between gap-4 text-xs", image ? "mt-4 lg:mt-10" : "mt-4")} role="status" aria-live="polite">
+          <div className="mt-4 flex min-h-5 items-center justify-between gap-4 text-xs" role="status" aria-live="polite">
             <span className="truncate text-paper/45">
               {error ? (
                 <span className="text-fog">{error}</span>
@@ -885,7 +904,7 @@ export function Engine() {
             {image && (
               <button
                 type="button"
-                onClick={() => setState((prev) => ({ ...freshState(), selected: prev.selected }))}
+                onClick={() => setState((prev) => freshState(prev.selected))}
                 className="shrink-0 font-medium text-paper/55 underline-offset-4 transition-colors hover:text-paper hover:underline"
               >
                 Reset all

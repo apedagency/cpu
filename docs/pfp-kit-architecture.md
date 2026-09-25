@@ -1,73 +1,106 @@
 # PFP kit architecture
 
-Upload a PFP, put on CPU, adjust, export. Everything runs in the browser.
+Upload any PFP, wear CPU, adjust, export. Everything runs in the browser.
 
-## The kit is extracted from official art
+The wearable system is **the glasses** (always on), **CPU upper-body armour**
+(optional, five angles) and subtle glass effects. There is no head piece: no
+cat ears, fur, stripes, whiskers or helmet. The uploaded character keeps its
+own head; the official character is the reference for the visor, materials,
+armour and colour only.
 
-The previous kit (`helmet-shell.svg`, `body-kit.svg`, a hand-drawn visor) was
-geometric reinterpretation and has been removed. The character lock
-(`CPU_CONTENT_100/00_CHARACTER_LOCK`) says the CPU head is organic fur, never a
-helmet, so the kit is built from the real character:
+## Generation (Higgsfield MCP)
 
-| Layer | Source | Extraction |
-| --- | --- | --- |
-| Visor (glass) | `public/art/gallery/face-front.webp` matte (front view), 4× Real-ESRGAN anime, worked at 2080 px | Dark glass + teal rim segmented, largest component, holes filled, symmetrised about its own axis, contour smoothed. |
-| Helmet (head frame) | same front face | The real crown: ears with pink inners, three forehead stripes and the fur wrapping the visor ends. Source symmetrised, visor area and everything below the visor's middle removed so the wearer's face stays visible. |
-| Body | `bust.png` 3200 px matte (the official PFP bust) | Head removed with the convex hull of the fur (offset past the chin's shadowed underside); keeps collar LED, hood, chest emblem, straps and shoulder armour. |
+Every wearable was generated with the Higgsfield connector, conditioned on the
+official references (`assets/cpu-character.png` panels, `public/art/gallery/face-*`,
+`public/art/character/bust.webp`, the turnaround views and suit close-ups).
+`public/pfp-kit/source/manifest.json` records every candidate: model, job id and
+verdict.
 
-Scripts live outside the repo (session scratchpad); outputs are committed as
-WebP in `public/pfp-kit/`:
+| Asset | Candidates | Selected | Model |
+| --- | --- | --- | --- |
+| Visor | 8 (GPT Image 2.5 ×3, Nano Banana Pro ×3, Seedream 5 Pro ×2) | `visor-01` — closest silhouette to the official visor (IoU 0.957) | GPT Image 2.5, native alpha |
+| Body front | 5 | `front-00` | GPT Image 2.5, native alpha |
+| Body right ¾ / left ¾ | 4 + 4 | `r34-00` / `l34-02` (a matched pair, ~30°) | GPT Image 2.5 |
+| Body right / left | 3 + 3 | `right-12` / `left-13` (a matched pair, ~60°) | GPT Image 2.5 |
 
-- `visor-tint.webp` — the art's own base glass colour (`rgb(1 27 25)`), alpha = silhouette.
-- `visor-edge.webp` — the art's dark outline ring.
-- `visor-light.webp` — the art's rim glow and gloss minus the base colour.
-- `crown.webp`, `body.webp`.
+The angle candidates were generated with the selected front as the primary
+reference (plus the official turnaround view for that direction), so the five
+angles are one armour kit. Selected bodies were upscaled to 4K with Higgsfield's
+upscaler; its RGB is recombined with the 2K native alpha.
 
-## How the glass is drawn
+Generation workspace (not committed): `CPU_PFP_GENERATION/` — candidates per
+folder, `rejected/`, `selected/`, and the processing scripts.
 
-Per frame, inside the visor's matrix:
+## Extraction
 
-1. **Multiply** the silhouette in teal (`rgb(40 150 136)`): the face keeps its
-   light and shading but turns green — reads as tinted glass over any skin tone.
-2. **Tint** with the base colour at the Glass amount (default 0.74).
-3. **Edge**: the outline, always solid.
-4. **Light** with `screen`: the art's rim and gloss brighten whatever is under
-   the glass, so the visor stays readable on dark and light PFPs.
-5. **Mark**: the exact Hyperliquid path (from `components/brand/marks.tsx`) with
-   a scaled canvas glow. The art's stretched mark halo is faded out first.
+- **Visor** (`process_visor.py`). The render `C` is read as dark glass plus
+  light: `base = min(C, #021e1c)`, `L = 1 − (1 − C)/(1 − base)`. `L` is split
+  multiplicatively into highlight (bright achromatic), reflection (soft
+  achromatic) and glow (chromatic mint/teal), so screening them back over the
+  base reproduces the render exactly (mean error 0). The dark outline ring is its
+  own always-solid layer. Light layers are stored unpremultiplied from black
+  (alpha = max channel).
+- **Effects** share the visor frame: a softened drop shadow, a mint rim light
+  outside the glass, and a faint wide sheen.
+- **Bodies** (`process_body.py`). Native alpha; edge colour pulled from the
+  nearest solid pixel (no halos over light or dark). The collar opening is
+  fitted as an ellipse (`fit_collar.py`); a neck-wide slot is removed from the
+  front lip upward so the wearer's own neck passes into the collar and the
+  collar's dark interior stays visible either side.
+- **Official Hyperliquid mark.** Never generated. Glasses: the SVG path
+  (`components/brand/marks.tsx`) is drawn at runtime with a lit gradient and glow.
+  Chest modules were generated blank; the same path is rasterised onto each,
+  warped by the module's shape: scale from the collar ring, horizontal
+  foreshortening capped at 0.72 so it never reads as an "H", plus the panel's
+  shear.
 
-## Transform model
+## Files
 
-`state.ts` keeps transforms for `userPfp`, `head`, `visor`, `helmet` and `body`
-(x, y in stage fractions; scale; rotation in degrees).
+```
+public/pfp-kit/
+  visor/     visor-main.{png,webp} visor-glass-base visor-rim visor-reflection
+             visor-highlight visor-glow-mask   (.png masters, .webp runtime @1400)
+  body/      body-{front,right-34,left-34,right,left}.{png @2560, webp @2048}
+  effects/   glass-reflection-soft mint-rim-light visor-shadow (.png/.webp, half-res)
+  previews/  body-*.webp (angle thumbnails), visor.webp
+  source/    *-higgsfield.webp (selected masters) + manifest.json
+```
 
-- **Fit together (default)**: visor and helmet gestures write `head`, so both
-  pivot on the same point and cannot drift apart.
-- **Separately**: gestures write `visor` / `helmet`, which are local transforms
-  nested inside the head frame (screen deltas are rotated/scaled into it).
-- Resetting either half of a linked kit resets the whole kit.
+## Geometry (`manifest.ts`)
 
-`manifest.ts` holds the measured geometry (visor frame, crown's visor box, body
-neck opening) and the default fit: glass across the eyes at ~42 % height,
-crown around it, collar under the chin at ~63 %.
+- **Glasses** pivot on the mark centre (the eye line). `DEFAULTS.glasses`
+  puts it at 40.5 % height with a glass width of 46 % of the canvas.
+- **Body** anchors at the centre of the collar's front lip. Each angle stores
+  that point and its collar-ring width; the ring is a horizontal circle, so its
+  width survives rotation and is the shared scale. Switching angle keeps the
+  neck in place at the same scale. Default: lip at 75 % height, ring 30 % wide.
 
-## Interaction
+## Rendering (`compose.ts`)
 
-- Direct manipulation first. `hitTest` samples each kit layer's real alpha, so
-  touching fur or glass moves the kit and touching the face moves the PFP.
-- One pointer drags; the corner dot scales + rotates around the pivot (snaps
-  level within 3°); two fingers pinch, rotate and pan; ctrl/trackpad pinch
-  zooms; plain wheel always scrolls the page.
-- Keyboard on the stage: arrows move, +/− scale, [ ] rotate.
-- The dock (21st Toolbar Dynamic, GSAP port) holds Replace · PFP · Visor ·
-  Helmet · Body · Export. Selecting a layer opens only its controls:
-  PFP scale/position, Visor scale/rotate/glass, Helmet scale/rotate, Body
-  scale/position, each with Reset. Desktop: the panel grows up over the stage.
-  Mobile: tabs sit under the stage and the panel opens below them.
+One `drawPfp()` renders the preview (backing store ≤ 1400 px) and the 2048 ×
+2048 PNG export: background → PFP → armour → glasses. The glasses draw, inside
+one matrix: shadow → teal multiply (keeps the face's light, tints it) → base at
+the Glass amount → solid rim → soft sheen, reflection, glow, highlight and rim
+light with `screen` → the official mark. Measured preview/export difference:
+~1/255 mean (resampling only).
 
-## Rendering, export and privacy
+## Editor
 
-One `drawPfp()` renders the preview (capped at 1400 px backing store) and the
-2048 × 2048 PNG export, so they match (measured mean difference 0.73/255, edges
-only). Uploads are decoded with `createImageBitmap` into a bounded canvas; no
-upload endpoint exists and nothing leaves the browser.
+Visible layers: **PFP**, **Glasses**, **Body** (21st Toolbar Dynamic dock,
+below the stage so the adjusted layer stays in view).
+
+- PFP: scale, position, reset.
+- Glasses: scale, rotate, glass, reset.
+- Body: **angle first** (21st Segmented Control with thumbnails: Left, Left ¾,
+  Front, Right ¾, Right), then scale, position, armour on/off, reset.
+- Direct manipulation stays primary: alpha hit-testing picks what you touch;
+  drag moves, the corner dot scales and turns (snaps level within 3°), two
+  fingers pinch/rotate/pan, ctrl/trackpad pinch zooms, plain wheel scrolls the
+  page. Keyboard on the stage: arrows move, +/− scale, [ ] rotate.
+- Upload turns everything on at the default fit (glasses selected, front
+  armour). The other angles load in the background once someone is wearing it.
+- Empty stage: the glasses float over an open face zone with the upload prompt
+  (PNG, JPEG or WebP; 20 MB limit secondary) and the armour faint below.
+
+Uploads are decoded with `createImageBitmap` into a bounded canvas; no upload
+endpoint exists and nothing leaves the browser.

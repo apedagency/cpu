@@ -42,27 +42,31 @@ and a failed source renders **Unavailable** — never 0 — while stale data is 
 
 ## PFP Engine layers
 
-The editor is upload-first: users add a PNG, JPEG, or WebP locally, then fit the CPU visor, helmet,
-and body kit over it. The image never leaves the browser. Preview and 2048 × 2048 PNG export share
-the Canvas 2D compositor in `src/features/engine/compose.ts`, so glass, transforms, and effects match.
+The editor is upload-first: users add a PNG, JPEG, or WebP locally and wear CPU over it — the CPU
+glasses and, optionally, CPU upper-body armour in one of five angles. There is no head piece: the
+wearer keeps their own head. The image never leaves the browser. Preview and 2048 × 2048 PNG export
+share the Canvas 2D compositor in `src/features/engine/compose.ts`.
 
-Production vector layers are registered in `src/features/engine/manifest.ts` and live under:
+Layers (registered in `src/features/engine/manifest.ts`):
 
-- `public/pfp-kit/visor/visor-glass.svg` — transparent optical glass with the exact official mark.
-- `public/pfp-kit/helmet/helmet-shell.svg` — graphite/white shell with a transparent face region.
-- `public/pfp-kit/body/body-kit.svg` — portrait armour frame.
-- `public/pfp-kit/effects/front-reflection.svg` — visor specular reflection.
+- `public/pfp-kit/visor/` — the glasses as separable glass layers (base, rim, reflection, glow,
+  highlight) plus a flattened `visor-main`; the official Hyperliquid mark is drawn from its SVG path.
+- `public/pfp-kit/body/` — `body-front`, `body-right-34`, `body-left-34`, `body-right`, `body-left`.
+- `public/pfp-kit/effects/` — contact shadow, mint rim light, soft reflection (they follow the glasses).
+- `public/pfp-kit/previews/` — angle-picker thumbnails; `public/pfp-kit/source/` — the selected
+  Higgsfield masters and `manifest.json` (models, job ids, verdicts, processing).
 
-Each editable layer owns x/y, scale, rotation, and opacity. Helmet and visor can optionally be linked.
-See `docs/pfp-kit-architecture.md` for upload normalization, direct manipulation, and export details.
+See `docs/pfp-kit-architecture.md` for generation, extraction, geometry and interaction details.
 
 ## Artwork pipeline
 
 All character art comes from the supplied files (`assets/cpu-character.png`, the banner frames) and
 the project's official listing images (Dexscreener portrait, Signal launch head). Renders were
 cropped from the character sheet, upscaled 4× locally with Real-ESRGAN (anime model), and cut out
-with BiRefNet — no new character art was generated. Logos are the official files: Hyperliquid brand
-kit, NVIDIA (svgl), X and Discord (Simple Icons).
+with BiRefNet — no new character art was generated. The PFP wearables (glasses and armour, no
+head) were generated with Higgsfield from those official references at the owner's request; see the
+PFP section. Logos are the official files: Hyperliquid brand kit, NVIDIA (svgl), X and Discord
+(Simple Icons).
 
 ## 21st.dev components
 
@@ -74,7 +78,7 @@ kit, NVIDIA (svgl), X and Discord (Simple Icons).
 | Variable Text Proximity | hyperiux | Lore statement | Self-hosted Roboto Flex, runs only in view. |
 | Sticky Content Wrapper | hyperiux | Lore story | Snap removed, per-step dwell, screen-reader copy. |
 | Amount Slider | serafimcloud | Compute position, Engine zoom | Stop-index (log) mapping, formatted rolling readout. |
-| Segmented Control | ddoemonn | Engine background/effect options | CSS spring instead of motion/react; swatch leads. |
+| Segmented Control | ddoemonn | Engine armour-angle picker | GSAP thumb instead of motion/react; thumbnail cells. |
 | Formation | uicapsule (kyh/uicapsule, MIT) | Gallery | Vertical wheel left to the page, keyboard browse, tap-to-open lightbox. |
 | Balance Chart | ssychui | Market chart | Real candles on a time axis, loading/error/empty states. |
 | Tangle Footer | radiumcoders | Footer | CSS entrance instead of motion/react; copy fitted per ring for a seamless loop. |

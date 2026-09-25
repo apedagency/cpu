@@ -1,5 +1,5 @@
 import { HYPERLIQUID_PATH } from "@/components/brand/marks";
-import { BODY, CROWN, DEFAULTS, KIT_SRC, VISOR, type KitAsset, type KitLayerId, type LayerId } from "./manifest";
+import { BODIES, DEFAULTS, VISOR, VISOR_GLASS_W, VISOR_SRC, type BodyAngle, type LayerId, type VisorAsset } from "./manifest";
 import type { PfpState, Transform } from "./state";
 
 export type UserImage = HTMLCanvasElement;
@@ -11,10 +11,22 @@ interface AlphaMask {
 }
 
 export interface Kit {
-  images: Record<KitAsset, HTMLImageElement>;
-  /** Visor silhouette filled with the multiply colour (built once). */
+  visor: Record<VisorAsset, HTMLImageElement>;
+  /** Glass silhouette filled with the multiply colour (built once). */
   multiply: HTMLCanvasElement;
-  masks: Record<KitLayerId, AlphaMask>;
+  mask: AlphaMask;
+}
+
+export interface LoadedBody {
+  image: HTMLImageElement;
+  mask: AlphaMask;
+}
+
+export type Bodies = Partial<Record<BodyAngle, LoadedBody>>;
+
+/** Drawing options for the empty stage (the kit shown without a wearer). */
+export interface DrawOptions {
+  bodyAlpha?: number;
 }
 
 /* Official mark bounds (see HYPERLIQUID_VIEWBOX). */
@@ -37,47 +49,50 @@ export interface LayerBox {
   h: number;
 }
 
-export function layerBoxes(state: PfpState, size: number, image: UserImage | null): Record<LayerId, LayerBox | null> {
-  const t = state.transforms;
-  const head = apply(new DOMMatrix().translate(DEFAULTS.head.cx * size, DEFAULTS.head.cy * size), size, t.head);
+export function glassesBox(state: PfpState, size: number): LayerBox {
+  const w = (DEFAULTS.glasses.glassW * size) / VISOR_GLASS_W;
+  const h = w * VISOR.aspect;
+  const anchor = new DOMMatrix().translate(DEFAULTS.glasses.cx * size, DEFAULTS.glasses.cy * size);
+  return { matrix: apply(anchor, size, state.transforms.glasses), x: -w * VISOR.mark.cx, y: -h * VISOR.mark.cy, w, h };
+}
 
-  const glassW = DEFAULTS.head.glassW * size;
-  const vw = glassW / VISOR.glass;
-  const vh = vw * VISOR.aspect;
-  const visor: LayerBox = { matrix: apply(head, size, t.visor), x: -vw / 2, y: -vh / 2, w: vw, h: vh };
+export function bodyBox(state: PfpState, size: number, angle: BodyAngle = state.angle): LayerBox {
+  const kit = BODIES[angle];
+  const w = (DEFAULTS.body.ringW * size) / kit.ringW;
+  const h = w * kit.aspect;
+  const anchor = new DOMMatrix().translate(DEFAULTS.body.cx * size, DEFAULTS.body.cy * size);
+  return { matrix: apply(anchor, size, state.transforms.body), x: -w * kit.collar.cx, y: -h * kit.collar.cy, w, h };
+}
 
-  const cw = glassW * CROWN.perGlass;
-  const ch = cw * CROWN.aspect;
-  const helmet: LayerBox = { matrix: apply(head, size, t.helmet), x: -cw * CROWN.glassCx, y: -ch * CROWN.glassCy, w: cw, h: ch };
+export function pfpBox(state: PfpState, size: number, image: UserImage): LayerBox {
+  const fit = Math.max(size / image.width, size / image.height);
+  const w = image.width * fit;
+  const h = image.height * fit;
+  return { matrix: apply(new DOMMatrix().translate(size / 2, size / 2), size, state.transforms.userPfp), x: -w / 2, y: -h / 2, w, h };
+}
 
-  const bw = DEFAULTS.body.w * size;
-  const bh = bw * BODY.aspect;
-  const bcx = (0.5 + (0.5 - BODY.neckCx) * DEFAULTS.body.w) * size;
-  const bcy = DEFAULTS.body.top * size + bh / 2;
-  const body: LayerBox = { matrix: apply(new DOMMatrix().translate(bcx, bcy), size, t.body), x: -bw / 2, y: -bh / 2, w: bw, h: bh };
+/** Where the layer's pixels are: the glass itself for the glasses, the whole frame otherwise. */
+export function outlineBox(id: LayerId, state: PfpState, size: number, image: UserImage | null): LayerBox | null {
+  if (id === "userPfp") return image ? pfpBox(state, size, image) : null;
+  if (id === "body") return state.bodyOn ? bodyBox(state, size) : null;
+  const b = glassesBox(state, size);
+  const g = VISOR.glass;
+  return { ...b, x: b.x + g.x0 * b.w, y: b.y + g.y0 * b.h, w: (g.x1 - g.x0) * b.w, h: (g.y1 - g.y0) * b.h };
+}
 
-  let userPfp: LayerBox | null = null;
-  if (image) {
-    const fit = Math.max(size / image.width, size / image.height);
-    const iw = image.width * fit;
-    const ih = image.height * fit;
-    userPfp = { matrix: apply(new DOMMatrix().translate(size / 2, size / 2), size, t.userPfp), x: -iw / 2, y: -ih / 2, w: iw, h: ih };
-  }
-  return { userPfp, visor, helmet, body };
+function sample(mask: AlphaMask, box: LayerBox, px: number, py: number) {
+  const p = box.matrix.inverse().transformPoint(new DOMPoint(px, py));
+  const u = (p.x - box.x) / box.w;
+  const v = (p.y - box.y) / box.h;
+  if (u < 0 || u >= 1 || v < 0 || v >= 1) return 0;
+  return mask.data[Math.floor(v * mask.h) * mask.w + Math.floor(u * mask.w)];
 }
 
 /** Top-most layer whose actual pixels are under (px, py) in canvas pixels. */
-export function hitTest(kit: Kit, state: PfpState, size: number, image: UserImage | null, px: number, py: number): LayerId | null {
-  const boxes = layerBoxes(state, size, image);
-  for (const id of ["visor", "helmet", "body"] as const) {
-    const box = boxes[id]!;
-    const p = box.matrix.inverse().transformPoint(new DOMPoint(px, py));
-    const u = (p.x - box.x) / box.w;
-    const v = (p.y - box.y) / box.h;
-    if (u < 0 || u >= 1 || v < 0 || v >= 1) continue;
-    const mask = kit.masks[id];
-    if (mask.data[Math.floor(v * mask.h) * mask.w + Math.floor(u * mask.w)] > 40) return id;
-  }
+export function hitTest(kit: Kit, bodies: Bodies, state: PfpState, size: number, image: UserImage | null, px: number, py: number): LayerId | null {
+  if (sample(kit.mask, glassesBox(state, size), px, py) > 40) return "glasses";
+  const body = bodies[state.angle];
+  if (state.bodyOn && body && sample(body.mask, bodyBox(state, size), px, py) > 40) return "body";
   return image ? "userPfp" : null;
 }
 
@@ -94,43 +109,51 @@ function drawBackground(ctx: CanvasRenderingContext2D, size: number) {
   ctx.fillRect(0, 0, size, size);
 }
 
-function drawBox(ctx: CanvasRenderingContext2D, box: LayerBox, source: CanvasImageSource) {
+function drawBox(ctx: CanvasRenderingContext2D, box: LayerBox, source: CanvasImageSource, alpha = 1) {
   ctx.save();
   ctx.setTransform(ctx.getTransform().multiply(box.matrix));
+  ctx.globalAlpha = alpha;
   ctx.drawImage(source, box.x, box.y, box.w, box.h);
   ctx.restore();
 }
 
-function drawVisor(ctx: CanvasRenderingContext2D, kit: Kit, box: LayerBox, glass: number) {
+/**
+ * The glasses, as layered glass: every layer shares the frame, so the effects
+ * follow the glasses without being separate editor layers.
+ */
+function drawGlasses(ctx: CanvasRenderingContext2D, kit: Kit, box: LayerBox, glass: number) {
   const base = ctx.getTransform();
+  const v = kit.visor;
+  const at = (img: CanvasImageSource, alpha = 1, op: GlobalCompositeOperation = "source-over") => {
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = op;
+    ctx.drawImage(img, box.x, box.y, box.w, box.h);
+  };
   ctx.save();
   ctx.setTransform(base.multiply(box.matrix));
 
-  // 1. Green glass: a multiply pass keeps the face's light but turns it teal,
-  //    then the art's own base colour darkens it by the Glass amount.
-  ctx.globalCompositeOperation = "multiply";
-  ctx.globalAlpha = Math.min(1, glass * 1.15);
-  ctx.drawImage(kit.multiply, box.x, box.y, box.w, box.h);
-  ctx.globalCompositeOperation = "source-over";
-  ctx.globalAlpha = glass;
-  ctx.drawImage(kit.images.visorTint, box.x, box.y, box.w, box.h);
-
-  // 2. The art's dark outline, always solid.
-  ctx.globalAlpha = 1;
-  ctx.drawImage(kit.images.visorEdge, box.x, box.y, box.w, box.h);
-
-  // 3. The art's rim light and gloss, added on top of whatever is underneath.
-  ctx.globalCompositeOperation = "screen";
-  ctx.drawImage(kit.images.visorLight, box.x, box.y, box.w, box.h);
+  // 1. Contact shadow on the wearer, then the glass: a multiply pass keeps the
+  //    face's light but turns it teal, and the glass colour darkens it.
+  at(v.shadow, 0.5 + 0.5 * glass);
+  at(kit.multiply, Math.min(1, glass * 1.15), "multiply");
+  at(v.base, glass);
+  // 2. The dark frame edge, always solid.
+  at(v.rim);
+  // 3. Light: soft sheen, reflections, the mint rim glow, specular highlights,
+  //    and the rim light spilling onto the wearer. Screen brightens whatever is
+  //    underneath, so the glass stays readable on dark and light PFPs.
+  at(v.softReflection, 1, "screen");
+  at(v.reflection, 1, "screen");
+  at(v.glow, 1, "screen");
+  at(v.highlight, 1, "screen");
+  at(v.rimLight, 0.55 + 0.45 * glass, "screen");
   ctx.globalCompositeOperation = "source-over";
 
   // 4. The exact Hyperliquid mark, lit from inside.
   markPath ??= new Path2D(HYPERLIQUID_PATH);
   const mw = VISOR.mark.w * box.w;
   const k = mw / MARK.w;
-  const mcx = box.x + VISOR.mark.cx * box.w;
-  const mcy = box.y + VISOR.mark.cy * box.h;
-  ctx.translate(mcx, mcy);
+  ctx.translate(box.x + VISOR.mark.cx * box.w, box.y + VISOR.mark.cy * box.h);
   ctx.scale(k, k);
   ctx.translate(-(MARK.x + MARK.w / 2), -(MARK.y + MARK.h / 2));
   const m = ctx.getTransform();
@@ -149,7 +172,15 @@ function drawVisor(ctx: CanvasRenderingContext2D, kit: Kit, box: LayerBox, glass
   ctx.restore();
 }
 
-export function drawPfp(ctx: CanvasRenderingContext2D, size: number, state: PfpState, kit: Kit, image: UserImage | null) {
+export function drawPfp(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  state: PfpState,
+  kit: Kit,
+  bodies: Bodies,
+  image: UserImage | null,
+  options: DrawOptions = {},
+) {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, size, size);
@@ -157,11 +188,10 @@ export function drawPfp(ctx: CanvasRenderingContext2D, size: number, state: PfpS
   ctx.imageSmoothingQuality = "high";
   drawBackground(ctx, size);
 
-  const boxes = layerBoxes(state, size, image);
-  if (image && boxes.userPfp) drawBox(ctx, boxes.userPfp, image);
-  drawBox(ctx, boxes.body!, kit.images.body);
-  drawBox(ctx, boxes.helmet!, kit.images.crown);
-  drawVisor(ctx, kit, boxes.visor!, state.glass);
+  if (image) drawBox(ctx, pfpBox(state, size, image), image);
+  const body = bodies[state.angle];
+  if (state.bodyOn && body) drawBox(ctx, bodyBox(state, size), body.image, options.bodyAlpha ?? 1);
+  drawGlasses(ctx, kit, glassesBox(state, size), state.glass);
   ctx.restore();
 }
 
@@ -196,23 +226,24 @@ function alphaMask(img: HTMLImageElement): AlphaMask {
 
 export async function loadKit(): Promise<Kit> {
   const entries = await Promise.all(
-    (Object.entries(KIT_SRC) as [KitAsset, string][]).map(async ([key, src]) => [key, await loadImage(src)] as const),
+    (Object.entries(VISOR_SRC) as [VisorAsset, string][]).map(async ([key, src]) => [key, await loadImage(src)] as const),
   );
-  const images = Object.fromEntries(entries) as Record<KitAsset, HTMLImageElement>;
+  const visor = Object.fromEntries(entries) as Record<VisorAsset, HTMLImageElement>;
 
-  const tint = images.visorTint;
+  const base = visor.base;
   const multiply = document.createElement("canvas");
-  multiply.width = tint.naturalWidth;
-  multiply.height = tint.naturalHeight;
+  multiply.width = base.naturalWidth;
+  multiply.height = base.naturalHeight;
   const mctx = multiply.getContext("2d")!;
-  mctx.drawImage(tint, 0, 0);
+  mctx.drawImage(base, 0, 0);
   mctx.globalCompositeOperation = "source-in";
   mctx.fillStyle = VISOR.multiply;
   mctx.fillRect(0, 0, multiply.width, multiply.height);
 
-  return {
-    images,
-    multiply,
-    masks: { visor: alphaMask(tint), helmet: alphaMask(images.crown), body: alphaMask(images.body) },
-  };
+  return { visor, multiply, mask: alphaMask(base) };
+}
+
+export async function loadBody(angle: BodyAngle): Promise<LoadedBody> {
+  const image = await loadImage(BODIES[angle].src);
+  return { image, mask: alphaMask(image) };
 }
