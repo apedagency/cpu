@@ -4,8 +4,12 @@
  * CPU colour system — sampled from x-banner + the character sheet.
  * Dark first: black / green-black carry the page, teal + mint carry
  * the energy, white is for type. Pink exists only on the cat.
+ * The site is dark-only: <html> always carries `.dark`, and there is
+ * no light palette to switch to.
  * ------------------------------------------------------------------ */
-:root {
+:root,
+.dark {
+  color-scheme: dark;
   --cpu-black: #0b0f12;
   --cpu-ink-1: #031613;
   --cpu-ink-2: #04201b;
@@ -127,6 +131,12 @@
 
   [id] {
     scroll-margin-top: 5rem;
+  }
+
+  /* Sections take programmatic focus for in-page navigation; they are not
+     controls, so they don't draw a ring. */
+  section[tabindex="-1"]:focus {
+    outline: none;
   }
 
   @media (prefers-reduced-motion: reduce) {

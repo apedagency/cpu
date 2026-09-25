@@ -1,69 +1,73 @@
 # PFP kit architecture
 
-## Layer order
+Upload a PFP, put on CPU, adjust, export. Everything runs in the browser.
 
-1. `background` — CPU dark/halftone procedural field.
-2. `userPfp` — normalized local upload; always remains visible.
-3. `body` — transparent portrait armour frame.
-4. `helmet` — shell around the face with a transparent centre.
-5. `visor` — translucent optical glass and rim.
-6. `mark` — exact official Hyperliquid path, positioned inside the visor.
-7. `reflection` — specular streaks and front optical highlight.
-8. `effects` — optional edge glow/vignette.
+## The kit is extracted from official art
 
-## Layer transforms
+The previous kit (`helmet-shell.svg`, `body-kit.svg`, a hand-drawn visor) was
+geometric reinterpretation and has been removed. The character lock
+(`CPU_CONTENT_100/00_CHARACTER_LOCK`) says the CPU head is organic fur, never a
+helmet, so the kit is built from the real character:
 
-`userPfp`, `body`, `helmet`, and `visor` each store `x`, `y`, `scale`, `rotation`, and `opacity` in normalized stage coordinates. `mark` and `reflection` follow the visor. Optional link-kit mode applies visor drag/scale/rotation deltas to the helmet while preserving both layers' offsets. Defaults are portrait-safe and every layer can be reset independently.
+| Layer | Source | Extraction |
+| --- | --- | --- |
+| Visor (glass) | `public/art/gallery/face-front.webp` matte (front view), 4× Real-ESRGAN anime, worked at 2080 px | Dark glass + teal rim segmented, largest component, holes filled, symmetrised about its own axis, contour smoothed. |
+| Helmet (head frame) | same front face | The real crown: ears with pink inners, three forehead stripes and the fur wrapping the visor ends. Source symmetrised, visor area and everything below the visor's middle removed so the wearer's face stays visible. |
+| Body | `bust.png` 3200 px matte (the official PFP bust) | Head removed with the convex hull of the fur (offset past the chin's shadowed underside); keeps collar LED, hood, chest emblem, straps and shoulder armour. |
 
-## Uploaded-image handling
+Scripts live outside the repo (session scratchpad); outputs are committed as
+WebP in `public/pfp-kit/`:
 
-- Accept PNG, JPEG, and WebP up to 20 MB.
-- Reject unsupported MIME types and empty/oversized files with an inline error.
-- Decode with `createImageBitmap(file, { imageOrientation: "from-image" })` where supported; fall back to an object-URL-backed `HTMLImageElement`.
-- Normalize the source into a bounded offscreen canvas (maximum 3072 px on its longest edge) for predictable preview memory while keeping enough detail for a 2048 export.
-- Transparent images remain transparent; non-square images begin in cover framing.
-- Drag-and-drop, file input, and clipboard paste use the same local pipeline.
+- `visor-tint.webp` — the art's own base glass colour (`rgb(1 27 25)`), alpha = silhouette.
+- `visor-edge.webp` — the art's dark outline ring.
+- `visor-light.webp` — the art's rim glow and gloss minus the base colour.
+- `crown.webp`, `body.webp`.
 
-## Pointer and touch interaction
+## How the glass is drawn
 
-- A tap selects the top-most editable layer hit in the stage; the layer strip is the deterministic fallback.
-- One pointer drags the selected layer.
-- Corner handles scale around the layer centre; the top handle rotates.
-- Two active touch pointers scale and rotate from their initial distance/angle.
-- Wheel zoom is active only while the stage is focused or hovered and calls `preventDefault` only for an intentional zoom gesture.
-- Pointer samples are accumulated in refs and committed through `requestAnimationFrame` to avoid React updates at hardware sampling rate.
+Per frame, inside the visor's matrix:
 
-## Keyboard and fallback controls
+1. **Multiply** the silhouette in teal (`rgb(40 150 136)`): the face keeps its
+   light and shading but turns green — reads as tinted glass over any skin tone.
+2. **Tint** with the base colour at the Glass amount (default 0.74).
+3. **Edge**: the outline, always solid.
+4. **Light** with `screen`: the art's rim and gloss brighten whatever is under
+   the glass, so the visor stays readable on dark and light PFPs.
+5. **Mark**: the exact Hyperliquid path (from `components/brand/marks.tsx`) with
+   a scaled canvas glow. The art's stretched mark halo is faded out first.
 
-- Arrow keys nudge; Shift + Arrow makes a larger nudge.
-- `+`/`-` scale and `[`/`]` rotate the selected layer.
-- Sliders/numeric readouts expose position, scale, rotation, and opacity without requiring drag.
-- Reset selected layer and reset all are real buttons with visible focus states.
+## Transform model
 
-## Asset paths
+`state.ts` keeps transforms for `userPfp`, `head`, `visor`, `helmet` and `body`
+(x, y in stage fractions; scale; rotation in degrees).
 
-- `public/pfp-kit/visor/visor-glass.svg`
-- `public/pfp-kit/helmet/helmet-shell.svg`
-- `public/pfp-kit/body/body-kit.svg`
-- `public/pfp-kit/effects/front-reflection.svg`
-- `public/loader/cpu-glass-shade.svg`
+- **Fit together (default)**: visor and helmet gestures write `head`, so both
+  pivot on the same point and cannot drift apart.
+- **Separately**: gestures write `visor` / `helmet`, which are local transforms
+  nested inside the head frame (screen deltas are rotated/scaled into it).
+- Resetting either half of a linked kit resets the whole kit.
 
-These are code-authored vector kit assets derived from the official CPU silhouette, palette, and exact Hyperliquid mark. No new character artwork is generated.
+`manifest.ts` holds the measured geometry (visor frame, crown's visor box, body
+neck opening) and the default fit: glass across the eyes at ~42 % height,
+crown around it, collar under the chin at ~63 %.
 
-## Rendering and export decision
+## Interaction
 
-SVG provides the transparent shell/glass geometry and Canvas 2D performs composition. The same `drawPfp` function renders both live preview and export, including gradients, opacity, transforms, and the official mark. This ensures close parity and removes the need for Three.js or a separate WebGL export path.
+- Direct manipulation first. `hitTest` samples each kit layer's real alpha, so
+  touching fur or glass moves the kit and touching the face moves the PFP.
+- One pointer drags; the corner dot scales + rotates around the pivot (snaps
+  level within 3°); two fingers pinch, rotate and pan; ctrl/trackpad pinch
+  zooms; plain wheel always scrolls the page.
+- Keyboard on the stage: arrows move, +/− scale, [ ] rotate.
+- The dock (21st Toolbar Dynamic, GSAP port) holds Replace · PFP · Visor ·
+  Helmet · Body · Export. Selecting a layer opens only its controls:
+  PFP scale/position, Visor scale/rotate/glass, Helmet scale/rotate, Body
+  scale/position, each with Reset. Desktop: the panel grows up over the stage.
+  Mobile: tabs sit under the stage and the panel opens below them.
 
-Preview draws at the displayed size capped at 1400 physical pixels. Export allocates a temporary 2048 × 2048 canvas, calls the same compositor, creates a PNG blob, triggers download, releases the object URL, and drops canvas references.
+## Rendering, export and privacy
 
-## Privacy model
-
-Uploaded bytes are decoded entirely in the browser. No upload endpoint, form submission, analytics payload, or remote image URL is created. The UI states: “Your image stays in your browser.” Share links encode only kit transforms/settings and never include the user image.
-
-## Mobile behavior
-
-- The stage stays square and uses `touch-action: pan-y` until a direct manipulation begins.
-- Handles are at least 44 px at display size.
-- The layer strip scrolls horizontally; controls stack below the stage.
-- Two-pointer gestures are optional enhancement; sliders and keyboard-compatible controls remain complete fallbacks.
-- Export remains 2048 × 2048 regardless of preview resolution.
+One `drawPfp()` renders the preview (capped at 1400 px backing store) and the
+2048 × 2048 PNG export, so they match (measured mean difference 0.73/255, edges
+only). Uploads are decoded with `createImageBitmap` into a bounded canvas; no
+upload endpoint exists and nothing leaves the browser.

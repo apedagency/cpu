@@ -11,6 +11,8 @@ export interface Work {
   alt: string;
   /** cover crops to the card; contain shows the full figure on the card ground. */
   fit?: "cover" | "contain";
+  /** Responsive focal point used when a cover crop is required. */
+  objectPosition?: string;
 }
 
 export interface Pose {

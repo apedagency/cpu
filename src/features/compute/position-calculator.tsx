@@ -1,9 +1,11 @@
 "use client";
 
+import NumberFlow from "@number-flow/react";
+import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 import { AmountReadout, AmountSlider } from "@/components/ui/amount-slider";
-import type { MarketSnapshot, RewardSnapshot } from "@/lib/types";
 import { amount, assetAmount, compact, UNAVAILABLE, usd } from "@/lib/format";
+import type { MarketSnapshot, RewardSnapshot } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** Log-spaced stops: CPU positions span orders of magnitude. */
@@ -17,18 +19,11 @@ const parseAmount = (s: string) => {
   return Number.isFinite(n) && n >= 0 ? Math.min(n, MAX_INPUT) : null;
 };
 
-function Row({ label, value, note, emphasis }: { label: string; value: string; note?: string; emphasis?: boolean }) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-t border-mint/10 py-4">
-      <dt className="text-sm text-paper/75">
-        {label}
-        {note && <span className="mt-0.5 block text-xs text-muted-foreground">{note}</span>}
-      </dt>
-      <dd className={cn("tabular text-right text-lg font-semibold text-paper", emphasis && "text-teal")}>{value}</dd>
-    </div>
-  );
-}
-
+/**
+ * Amount mode answers three questions only: what is this position worth, does
+ * it count for rewards, and what share of eligible supply is it. The fee
+ * arithmetic stays behind "How rewards scale" — it is not a forecast.
+ */
 export function PositionCalculator({ market, rewards }: { market: MarketSnapshot | null; rewards: RewardSnapshot | null }) {
   const [cpu, setCpu] = useState(5_000_000);
   const [draft, setDraft] = useState("5,000,000");
@@ -50,10 +45,8 @@ export function PositionCalculator({ market, rewards }: { market: MarketSnapshot
   const eligible = chain ? cpu >= chain.minEligible : null;
   const share = chain && eligible ? Math.min(1, cpu / chain.eligibleSupply) : null;
   const perVolume = terms ? EXAMPLE_VOLUME * terms.holderFractionOfTrade : null;
-  const yourSlice = perVolume !== null && share !== null ? perVolume * share : null;
+  const slice = perVolume !== null && share !== null ? perVolume * share : null;
 
-  // The slider runs in stop-index space so log-spaced amounts sit evenly on
-  // the track; a typed value between stops keeps its exact amount.
   const logCpu = Math.log(Math.max(cpu, 1));
   const sliderIndex = STOPS.reduce(
     (best, s, i) => (Math.abs(Math.log(s) - logCpu) < Math.abs(Math.log(STOPS[best]) - logCpu) ? i : best),
@@ -61,22 +54,19 @@ export function PositionCalculator({ market, rewards }: { market: MarketSnapshot
   );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="type-label mb-2">Position</p>
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <p className="flex items-baseline gap-3">
             <AmountReadout
               text={amount(cpu, 0)}
               label={`${amount(cpu, 0)} CPU`}
-              className="text-[clamp(2.25rem,5vw,3.75rem)] leading-none tracking-[-0.02em]"
+              className="text-[clamp(2.5rem,5.4vw,4.5rem)] leading-none tracking-[-0.03em] text-paper"
             />
-            <span className="ml-2 text-lg font-medium text-mint">CPU</span>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={inputId} className="text-xs text-muted-foreground">
-              Exact amount
-            </label>
+            <span className="text-lg font-medium text-mint">CPU</span>
+          </p>
+          <label htmlFor={inputId} className="group flex items-baseline gap-2 text-xs text-paper/45">
+            <span className="max-sm:sr-only">Exact</span>
             <input
               id={inputId}
               inputMode="numeric"
@@ -89,13 +79,13 @@ export function PositionCalculator({ market, rewards }: { market: MarketSnapshot
                 if (n !== null) setCpu(n);
               }}
               onBlur={() => setDraft(amount(cpu, 0))}
-              className="tabular h-11 w-44 rounded-md border border-mint/20 bg-ink-1 px-3 text-right text-paper outline-none transition-colors placeholder:text-paper/30 focus:border-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
               aria-describedby={`${inputId}-hint`}
+              className="tabular h-10 w-36 border-b border-paper/20 bg-transparent text-right text-base text-paper outline-none transition-[border-color,box-shadow] placeholder:text-paper/30 hover:border-paper/40 focus:border-teal focus-visible:shadow-[0_2px_0_var(--cpu-teal)]"
             />
             <span id={`${inputId}-hint`} className="sr-only">
               CPU amount, up to one billion
             </span>
-          </div>
+          </label>
         </div>
 
         <AmountSlider
@@ -108,51 +98,73 @@ export function PositionCalculator({ market, rewards }: { market: MarketSnapshot
           aria-label="CPU amount"
           aria-valuetext={`${amount(cpu, 0)} CPU`}
         />
-        <div className="relative h-4 text-xs tabular-nums text-muted-foreground" aria-hidden="true">
+        <div className="relative h-4 text-[0.6875rem] tabular-nums text-paper/40" aria-hidden="true">
           {STOPS.map((s, i) =>
             i === 0 || i === STOPS.length - 1 || s === 1_000_000 ? (
               <span
                 key={s}
-                className={cn("absolute top-0 -translate-x-1/2 whitespace-nowrap", i === 0 && "translate-x-0", i === STOPS.length - 1 && "-translate-x-full")}
+                className={cn("absolute top-0 -translate-x-1/2 whitespace-nowrap", i === 0 && "translate-x-0", i === STOPS.length - 1 && "-translate-x-full", s === 1_000_000 && "text-mint/70")}
                 style={{ left: `calc(${i / (STOPS.length - 1)} * (100% - 24px) + 12px)` }}
               >
                 {compact(s)}
-                {s === 1_000_000 && " min."}
+                {s === 1_000_000 && " minimum"}
               </span>
             ) : null,
           )}
         </div>
       </div>
 
-      <dl>
-        <Row label="Position value" value={usd(valueUsd)} note={valueNative !== null ? `${assetAmount(valueNative)} ${sym}` : undefined} />
-        <Row
-          label="Reward eligibility"
-          value={eligible === null ? UNAVAILABLE : eligible ? "Counts" : "Below minimum"}
-          note={chain ? `Wallets need at least ${amount(chain.minEligible, 0)} CPU` : undefined}
-          emphasis={eligible === true}
-        />
-        <Row
-          label="Share of eligible supply"
-          value={share === null ? (eligible === false ? "Not counted" : UNAVAILABLE) : `${(share * 100).toFixed(share < 0.001 ? 4 : 3)}%`}
-          note="Against today's eligible supply"
-        />
-        <Row
-          label={`Holder fees per ${usd(EXAMPLE_VOLUME, "whole")} traded`}
-          value={perVolume === null ? UNAVAILABLE : usd(perVolume)}
-          note={`Paid to all holders in ${sym}`}
-        />
-        <Row
-          label="Your slice of that"
-          value={yourSlice === null ? (eligible === false ? "Not counted" : UNAVAILABLE) : usd(yourSlice)}
-          emphasis={yourSlice !== null}
-        />
+      <dl className="grid gap-x-10 gap-y-6 sm:grid-cols-3">
+        <div>
+          <dt className="text-sm text-paper/55">Worth today</dt>
+          <dd className="tabular mt-1.5 text-[clamp(1.75rem,2.6vw,2.25rem)] font-semibold leading-none tracking-[-0.02em] text-paper">
+            {valueUsd !== null ? <NumberFlow value={valueUsd} format={{ style: "currency", currency: "USD", maximumFractionDigits: valueUsd >= 100 ? 0 : 2 }} /> : UNAVAILABLE}
+          </dd>
+          {valueNative !== null && <dd className="tabular mt-1.5 text-xs text-paper/45">{assetAmount(valueNative)} {sym}</dd>}
+        </div>
+        <div>
+          <dt className="text-sm text-paper/55">Counts for rewards</dt>
+          <dd className={cn("mt-1.5 text-[clamp(1.75rem,2.6vw,2.25rem)] font-semibold leading-none tracking-[-0.02em]", eligible ? "text-teal" : "text-paper/70")}>
+            {eligible === null ? UNAVAILABLE : eligible ? "Yes" : "Not yet"}
+          </dd>
+          {chain && (
+            <dd className="mt-1.5 text-xs text-paper/45">
+              {eligible ? "Holds at least" : "Needs"} {amount(chain.minEligible, 0)} CPU
+            </dd>
+          )}
+        </div>
+        <div>
+          <dt className="text-sm text-paper/55">Share of eligible supply</dt>
+          <dd className="tabular mt-1.5 text-[clamp(1.75rem,2.6vw,2.25rem)] font-semibold leading-none tracking-[-0.02em] text-paper">
+            {share !== null ? (
+              <NumberFlow value={share} format={{ style: "percent", maximumFractionDigits: share < 0.001 ? 4 : 3, minimumFractionDigits: 2 }} />
+            ) : eligible === false ? (
+              "—"
+            ) : (
+              UNAVAILABLE
+            )}
+          </dd>
+          {chain && <dd className="tabular mt-1.5 text-xs text-paper/45">of {compact(chain.eligibleSupply)} CPU counted today</dd>}
+        </div>
       </dl>
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        Arithmetic from the token&apos;s fixed fee terms and today&apos;s price and eligible supply — not a forecast. What holders
-        actually receive depends on real trading volume, balances and when payouts are pushed or claimed.
-      </p>
+      <details className="group text-sm text-paper/55">
+        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 font-medium text-paper/60 transition-colors hover:text-paper [&::-webkit-details-marker]:hidden">
+          How rewards scale
+          <ChevronDown className="size-4 transition-transform duration-300 group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <p className="max-w-2xl pb-2 leading-relaxed">
+          Holders share {terms ? `${amount(terms.holderFractionOfTrade * 100, 2)}%` : "a fixed part"} of every trade&apos;s value, paid in {sym} and split by
+          balance.{" "}
+          {slice !== null && perVolume !== null ? (
+            <>
+              At this share, every {usd(EXAMPLE_VOLUME, "whole")} traded sends {usd(perVolume)} to all holders, and {usd(slice)} of it to a wallet this size.{" "}
+            </>
+          ) : null}
+          That is arithmetic on the fixed terms and today&apos;s eligible supply, not a forecast — what arrives depends on real volume and when
+          payouts are pushed or claimed.
+        </p>
+      </details>
     </div>
   );
 }

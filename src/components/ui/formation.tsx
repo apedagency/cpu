@@ -15,6 +15,7 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
+import Image from "next/image";
 
 import type { FmLayout, FormationMode, Pose, Work } from "./formation-utils/formation-poses";
 import {
@@ -110,7 +111,6 @@ const makeCards = (works: Work[]): CardState[] =>
     work,
   }));
 
-const pad = (n: number) => String(n).padStart(2, "0");
 const isDragging = (s: LoopState) => s.press?.committed === true;
 const isUI = (target: EventTarget | null) => target instanceof Element && target.closest("[data-fm-ui]") !== null;
 
@@ -128,7 +128,6 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
 
   const rootRef = useRef<HTMLElement | null>(null);
   const parallaxRef = useRef<HTMLDivElement | null>(null);
-  const counterRef = useRef<HTMLSpanElement | null>(null);
   const selectRef = useRef(onSelect);
   const focusRef = useRef(onFocusChange);
   selectRef.current = onSelect;
@@ -218,7 +217,6 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
     }
     if (parallaxRef.current) parallaxRef.current.style.transform = "";
     const focused = focusedCard();
-    if (counterRef.current && focused) counterRef.current.textContent = `${pad(focused.index + 1)} — ${pad(n)}`;
     if (focused) focusRef.current?.(focused.index);
   };
 
@@ -362,7 +360,6 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
       if (!focused) focused = focusedCard();
       if (focused && focused !== st.lastFocused) {
         st.lastFocused = focused;
-        if (counterRef.current) counterRef.current.textContent = `${pad(focused.index + 1)} — ${pad(n)}`;
         focusRef.current?.(focused.index);
       }
     };
@@ -638,15 +635,14 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
                   className="absolute inset-0 overflow-hidden"
                   style={{ borderRadius: 10, transform: `scale(calc(1 + ${HOVER_ZOOM} * var(--hv, 0)))` }}
                 >
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      backgroundImage: `url(${card.work.image})`,
-                      backgroundPosition: card.work.fit === "contain" ? "center 60%" : "center",
-                      backgroundRepeat: "no-repeat",
-                      backgroundSize: card.work.fit === "contain" ? "86% auto" : "cover",
-                      borderRadius: 10,
-                    }}
+                  <Image
+                    src={card.work.image}
+                    alt=""
+                    fill
+                    loading="lazy"
+                    sizes="(max-width: 640px) 40vw, 220px"
+                    className={card.work.fit === "contain" ? "object-contain p-[7%]" : "object-cover"}
+                    style={{ objectPosition: card.work.objectPosition ?? (card.work.fit === "contain" ? "center 60%" : "center") }}
                   />
                 </div>
               </div>
@@ -655,27 +651,8 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
         </div>
       </div>
 
-      <footer
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex items-end justify-end p-5 sm:px-8"
-        style={{ color: "var(--fm-fg)" }}
-      >
-        <span
-          ref={counterRef}
-          aria-hidden="true"
-          className="hidden font-mono uppercase sm:block"
-          style={{ fontSize: "0.64rem", fontVariantNumeric: "tabular-nums", letterSpacing: "0.2em", opacity: 0.55 }}
-        >
-          {`01 — ${pad(n)}`}
-        </span>
-      </footer>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6 sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-5 sm:justify-end sm:px-0 sm:pr-6">
-        <div
-          role="radiogroup"
-          aria-label="Formation"
-          data-fm-ui
-          className="pointer-events-auto flex gap-1 rounded-full border border-mint/15 bg-ink-1/80 p-1 shadow-[0_14px_40px_-20px_rgba(0,0,0,0.6)] backdrop-blur-md"
-        >
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-5 sm:inset-x-auto sm:right-0 sm:justify-end sm:pr-(--gutter)">
+        <div role="radiogroup" aria-label="Formation" data-fm-ui className="pointer-events-auto flex gap-5">
           {MODES.map((m) => {
             const active = mode === m.id;
             return (
@@ -685,8 +662,8 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
                 type="button"
                 aria-checked={active}
                 onClick={() => setMode(m.id)}
-                className={`min-h-9 rounded-full px-3.5 text-[0.8rem] font-medium transition-colors ${
-                  active ? "bg-teal text-ink-1" : "text-paper/80 hover:text-paper"
+                className={`relative min-h-11 text-[0.6875rem] font-semibold uppercase tracking-[0.16em] transition-colors after:absolute after:inset-x-0 after:bottom-2 after:h-0.5 after:origin-left after:bg-teal after:transition-transform after:duration-500 ${
+                  active ? "text-paper after:scale-x-100" : "text-paper/40 after:scale-x-0 hover:text-paper/80"
                 }`}
               >
                 {m.label}

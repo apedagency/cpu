@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { NvidiaWordmark } from "@/components/brand/marks";
@@ -43,6 +43,28 @@ export function Hero() {
   const reduced = useReducedMotion();
   const figureRef = useRef<HTMLDivElement>(null);
 
+  const commonHeroProps = {
+    alt: "CPU standing in a monumental black compute chamber beneath a curved mint halftone structure",
+    sizes: "100vw",
+    quality: 82,
+  } as const;
+  const {
+    props: { srcSet: desktopSrcSet },
+  } = getImageProps({
+    ...commonHeroProps,
+    src: "/art/campaign/01-hero-master.webp",
+    width: 1672,
+    height: 941,
+  });
+  const {
+    props: { srcSet: mobileSrcSet, ...heroImageProps },
+  } = getImageProps({
+    ...commonHeroProps,
+    src: "/art/campaign/02-hero-close-portrait.webp",
+    width: 1122,
+    height: 1402,
+  });
+
   // A slight lean toward the pointer on desktop only.
   useEffect(() => {
     const el = figureRef.current;
@@ -77,50 +99,35 @@ export function Hero() {
       aria-labelledby="hero-title"
       className="relative isolate h-svh min-h-[40rem] overflow-hidden"
     >
-      {/* Tonal pools: a dark stage behind the cat, and a floor fade into the page. */}
+      <div ref={figureRef} className="pointer-events-none absolute -inset-[2%] -z-30 will-change-transform">
+        <picture>
+          <source media="(min-width: 769px)" srcSet={desktopSrcSet} />
+          <source media="(max-width: 768px)" srcSet={mobileSrcSet} />
+          <img
+            {...heroImageProps}
+            fetchPriority="high"
+            className="size-full object-cover object-[58%_50%] max-md:object-[52%_42%]"
+          />
+        </picture>
+      </div>
+
+      {/* Contrast veil and floor handoff keep copy legible without flattening the CG. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[radial-gradient(38%_48%_at_50%_58%,rgba(2,12,10,0.94)_0%,rgba(2,12,10,0.6)_50%,transparent_100%)]"
+        className="absolute inset-0 -z-20 bg-[linear-gradient(90deg,rgba(1,8,7,0.82)_0%,rgba(1,8,7,0.36)_36%,transparent_66%),linear-gradient(180deg,rgba(1,8,7,0.32)_0%,transparent_45%)] max-md:bg-[linear-gradient(180deg,rgba(1,8,7,0.72)_0%,transparent_42%,rgba(1,8,7,0.78)_78%,#010807_100%)]"
       />
       <div aria-hidden="true" className="absolute inset-x-0 bottom-0 -z-10 h-[34svh] bg-linear-to-b from-transparent via-cpu-black/70 to-cpu-black" />
 
       {/* The word, set wide and heavy, as a stencil across the halftone. */}
       <p
         aria-hidden="true"
-        className="type-display pointer-events-none absolute inset-x-0 top-[21svh] -z-10 select-none text-center text-[clamp(8rem,35vw,34rem)] text-ink-1/95 max-md:top-[30svh]"
-        style={{ WebkitTextStroke: "1px rgb(151 252 228 / 0.16)", textShadow: "0 0 90px rgba(2,12,10,0.9)" }}
+        className="type-display pointer-events-none absolute inset-x-0 top-[21svh] -z-10 select-none text-center text-[clamp(8rem,35vw,34rem)] text-transparent opacity-30 max-md:hidden"
+        style={{ WebkitTextStroke: "1px rgb(151 252 228 / 0.22)", textShadow: "0 0 90px rgba(2,12,10,0.9)" }}
       >
         CPU
       </p>
 
-      {/* Character + reflective floor, echoing the banner stage. */}
-      <div
-        className="pointer-events-none absolute bottom-[9svh] left-1/2 h-[min(76svh,58rem,75vw)] -translate-x-1/2 max-md:bottom-[calc(15rem+2svh)] max-md:h-[calc(100svh-15rem-15.5rem)] max-md:max-h-108"
-        style={{ aspectRatio: "1431 / 1800", perspective: "1200px" }}
-      >
-        <div ref={figureRef} className="relative h-full w-full will-change-transform">
-          <span data-hero-visor-target className="absolute left-[25%] top-[5%] h-[24%] w-[50%]" aria-hidden="true" />
-          <Image
-            src="/art/character/hero.webp"
-            alt="CPU, the Hyperliquid cat, standing in a black-and-white tactical exosuit with a teal-lit Hyperliquid visor"
-            fill
-            priority
-            fetchPriority="high"
-            sizes="(max-width: 768px) 80vw, 46vw"
-            className="object-contain object-bottom drop-shadow-[0_30px_60px_rgba(0,0,0,0.6)]"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 top-full h-[22%] overflow-hidden opacity-25"
-            style={{ maskImage: "linear-gradient(to bottom, black, transparent 80%)" }}
-          >
-            <div className="relative h-[455%] w-full -scale-y-100">
-              <Image src="/art/character/hero.webp" alt="" fill sizes="(max-width: 768px) 80vw, 46vw" className="object-contain object-bottom" />
-            </div>
-          </div>
-        </div>
-        <div aria-hidden="true" className="absolute -bottom-3 left-1/2 h-6 w-[70%] -translate-x-1/2 rounded-[50%] bg-teal/25 blur-2xl" />
-      </div>
+      <span data-hero-visor-target className="absolute left-[67%] top-[28%] h-[16%] w-[16%] max-md:left-[30%] max-md:top-[18%] max-md:h-[22%] max-md:w-[40%]" aria-hidden="true" />
 
       {/* Title block */}
       <div className="absolute left-(--gutter) top-[clamp(5.25rem,15svh,9rem)] max-w-88 max-md:right-(--gutter) max-md:max-w-none">

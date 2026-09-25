@@ -100,9 +100,8 @@ function Panel() {
             <div
               key={m.src}
               data-reveal="media"
-              className="relative h-[clamp(9rem,20vw,17rem)] w-[clamp(7rem,15vw,13rem)] overflow-hidden rounded-lg border border-mint/10 bg-visor opacity-0 max-[1025px]:h-40 max-[1025px]:flex-1"
+              className="relative h-[clamp(9rem,20vw,17rem)] w-[clamp(7rem,15vw,13rem)] overflow-hidden rounded-md bg-[radial-gradient(80%_70%_at_50%_35%,#0b3a33,#031613)] opacity-0 max-[1025px]:h-40 max-[1025px]:flex-1"
             >
-              <div className="halftone-field absolute inset-0 opacity-70" aria-hidden="true" />
               <Image src={m.src} alt={m.alt} fill sizes="(max-width: 1025px) 45vw, 15vw" className="object-contain object-bottom p-2" />
             </div>
           ))}
@@ -110,18 +109,18 @@ function Panel() {
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-6">
-        <ul className="flex flex-wrap items-center gap-2">
+        <ul className="flex flex-wrap items-center gap-x-7 gap-y-1">
           {SOCIALS.map((s) => (
             <li key={s.label} data-reveal="social" className="opacity-0">
               <a
                 href={s.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-11 items-center gap-2 rounded-md border border-mint/15 px-4 text-sm font-medium text-paper transition-colors hover:border-teal/60 hover:text-teal"
+                className="group inline-flex min-h-11 items-center gap-2 text-base font-medium text-paper/80 transition-colors hover:text-paper"
               >
                 {s.icon}
-                {s.label}
-                <ArrowUpRight className="size-3.5 opacity-60" aria-hidden="true" />
+                <span className="underline-offset-[6px] group-hover:underline">{s.label}</span>
+                <ArrowUpRight className="size-3.5 text-mint/70 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
                 <span className="sr-only">(opens in a new tab)</span>
               </a>
             </li>

@@ -27,8 +27,8 @@ export function ContractCopy({ variant = "chip", className, label = "CA" }: Cont
       className={cn(
         plain
           ? "group relative inline-flex min-h-11 max-w-full items-center gap-2 bg-transparent p-0 text-left text-paper/58 transition-colors duration-300 hover:text-mint"
-          : "group relative inline-flex min-h-11 max-w-full items-center gap-3 rounded-md border border-mint/20 bg-ink-1/70 px-3 text-left text-paper backdrop-blur-sm transition-[border-color,background-color] duration-300 hover:border-teal/60 hover:bg-visor",
-        copied && (plain ? "text-teal" : "border-teal/80"),
+          : "group relative inline-flex min-h-11 max-w-full items-center gap-3 rounded-xs bg-ink-1/70 px-3 text-left text-paper shadow-[inset_0_0_0_1px_rgba(151,252,228,0.14)] backdrop-blur-sm transition-[box-shadow,background-color] duration-300 hover:bg-visor hover:shadow-[inset_0_0_0_1px_rgba(0,240,230,0.5)]",
+        copied && (plain ? "text-teal" : "shadow-[inset_0_0_0_1px_var(--cpu-teal)]"),
         className,
       )}
       aria-label={`Copy ${token.symbol} contract address ${token.address}`}
@@ -69,7 +69,7 @@ export function ContractCopy({ variant = "chip", className, label = "CA" }: Cont
         aria-live="polite"
         className={cn(
           "pointer-events-none absolute -top-6 right-0 whitespace-nowrap text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-teal opacity-0 transition-[background-color,opacity,transform] duration-300",
-          !plain && "rounded bg-teal px-2 py-1 text-ink-1",
+          !plain && "rounded-xs bg-teal px-2 py-1 text-ink-1",
           (copied || failed) && "-translate-y-0.5 opacity-100",
           failed && "bg-fog",
         )}

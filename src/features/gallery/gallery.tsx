@@ -85,7 +85,7 @@ function Lightbox({ index, onClose, onStep }: { index: number | null; onClose: (
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="absolute right-4 top-4 grid size-11 place-items-center rounded-full border border-mint/20 bg-ink-1/80 hover:border-teal"
+            className="absolute right-4 top-4 grid size-11 place-items-center rounded-sm bg-ink-1/70 text-paper/80 backdrop-blur-md transition-colors hover:bg-ink-2 hover:text-paper"
           >
             <X className="size-5" aria-hidden="true" />
           </button>
@@ -93,7 +93,7 @@ function Lightbox({ index, onClose, onStep }: { index: number | null; onClose: (
             type="button"
             onClick={() => onStep(-1)}
             aria-label="Previous artwork"
-            className="absolute left-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-mint/20 bg-ink-1/80 hover:border-teal"
+            className="absolute left-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-sm bg-ink-1/70 text-paper/80 backdrop-blur-md transition-colors hover:bg-ink-2 hover:text-paper"
           >
             <ChevronLeft className="size-5" aria-hidden="true" />
           </button>
@@ -101,7 +101,7 @@ function Lightbox({ index, onClose, onStep }: { index: number | null; onClose: (
             type="button"
             onClick={() => onStep(1)}
             aria-label="Next artwork"
-            className="absolute right-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-mint/20 bg-ink-1/80 hover:border-teal"
+            className="absolute right-3 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-sm bg-ink-1/70 text-paper/80 backdrop-blur-md transition-colors hover:bg-ink-2 hover:text-paper"
           >
             <ChevronRight className="size-5" aria-hidden="true" />
           </button>
@@ -117,26 +117,29 @@ export function Gallery() {
   const step = useCallback((d: number) => setOpen((i) => (i === null ? i : (i + d + ART.length) % ART.length)), []);
 
   return (
-    <section id="gallery" tabIndex={-1} aria-labelledby="gallery-title" className="relative">
-      <header className="flex flex-wrap items-end justify-between gap-6 px-(--gutter) pb-8 pt-[clamp(5rem,10vw,9rem)]">
-        <div>
-          <p className="type-label mb-4 text-mint">Gallery</p>
+    <section id="gallery" tabIndex={-1} aria-labelledby="gallery-title" className="relative pt-[clamp(4rem,8vw,7rem)]">
+      <div className="relative h-[min(100svh,58rem)] min-h-[36rem]">
+        <Formation works={ART} onSelect={setOpen} onFocusChange={setFocused} label="CPU artwork gallery" />
+        {/* The stage's empty centre carries the title and the piece in focus. */}
+        <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center px-6 text-center">
           <h2
             id="gallery-title"
-            className="text-[clamp(2.25rem,5vw,4.5rem)] font-semibold leading-[0.95] tracking-[-0.03em] text-paper [font-variation-settings:'wdth'_110,'opsz'_120]"
+            className="text-[clamp(2rem,4.6vw,4.25rem)] font-semibold leading-[0.92] tracking-[-0.04em] text-paper [font-variation-settings:'wdth'_112,'opsz'_144] [text-shadow:0_6px_40px_rgba(2,12,10,0.9)]"
           >
-            Every angle of the cat.
+            Every angle
+            <br />
+            of the cat.
           </h2>
-        </div>
-        <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-          Drag sideways or use the arrow keys. Tap a card to open it.
-          <span className="mt-1 block text-paper/70" aria-live="polite">
+          <p className="mt-5 flex items-baseline gap-3 text-sm text-paper/70 [text-shadow:0_2px_16px_rgba(2,12,10,0.95)]" aria-live="polite">
+            <span className="tabular font-mono text-xs text-mint/80">
+              {String(focused + 1).padStart(2, "0")} / {String(ART.length).padStart(2, "0")}
+            </span>
             {ART[focused]?.caption}
-          </span>
+          </p>
+        </div>
+        <p className="pointer-events-none absolute bottom-6 left-(--gutter) z-30 text-xs text-paper/40 max-sm:hidden">
+          Drag sideways or use the arrow keys · tap a piece to open it
         </p>
-      </header>
-      <div className="h-[min(100svh,56rem)] min-h-[34rem]">
-        <Formation works={ART} onSelect={setOpen} onFocusChange={setFocused} label="CPU artwork gallery" />
       </div>
       <Lightbox index={open} onClose={() => setOpen(null)} onStep={step} />
     </section>

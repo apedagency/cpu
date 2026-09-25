@@ -27,7 +27,7 @@
     ]
   },
   "design": {
-    "colorMode": "dark",
+    "colorMode": "light-and-dark",
     "colors": {
       "--cpu-muted": {
         "value": "#9fb5ae",
@@ -276,15 +276,17 @@
   "components": {
     "installed": [
       "amount-slider",
+      "animated-beam",
+      "animated-tabs",
       "balance-chart",
       "dot-transition",
       "formation",
       "formation-utils",
       "halftone-dots-led-screen",
       "immersive-full-screen-nav",
-      "segmented-control",
-      "sticky-content-wrapper",
-      "tangle-footer",
+      "scroll-reveal-content",
+      "text-hover-effect",
+      "toolbar-dynamic",
       "variable-text-proximity"
     ],
     "preferredPrimitives": [
@@ -294,26 +296,42 @@
   },
   "constraints": {
     "must": [
-      "Preserve the CPU black, green, teal, mint, white, glass, and halftone visual language",
-      "Use one continuous page-level environment behind mostly transparent sections",
-      "Keep real market and reward logic unchanged",
-      "Keep uploaded PFP images local to the browser"
+      "Product: an interactive crypto/memecoin brand website for Cat Purrcessing Unit ($CPU) on HyperEVM — an editorial, experimental web experience, not an app dashboard or SaaS product",
+      "Dark-only: every surface is black (#0B0F12) or deep green-black (#031613/#04201B); there is no light theme. The detector reports light-and-dark only because Tailwind v4 declares tokens under :root/@theme",
+      "Energy colour is Hyperliquid teal #00F0E6 with mint #97FCE4; white #FBF9FB is for type; graphite #2A2F36 for hardware; pink appears only on the cat's ears",
+      "One continuous page-level environment (fixed halftone WebGL + glass light) behind transparent sections; sections are content planes, not boxed panels",
+      "Hierarchy through space, type scale, alignment, light and motion before borders and cards; radius is used deliberately (mostly sharp, rounded only for glass/visor forms)",
+      "Community 21st.dev components carry the signature interaction of each section; Radix/shadcn primitives only underneath for accessibility",
+      "Keep real market and reward logic unchanged; show Unavailable rather than 0 or a guess when data is missing",
+      "Keep uploaded PFP images local to the browser",
+      "Use only official CPU art (crops, mattes and extractions of supplied art are fine)"
     ],
     "avoid": [
+      "Light-mode or light SaaS UI of any kind",
+      "Generic dashboard layouts, KPI card rows and card grids",
+      "Card/Tabs/Input/Button assemblies as a section's visual identity",
       "Purple or rainbow gradients",
-      "Generic SaaS cards, pill navigation, fake terminals, and decorative particles",
+      "Pill navigation, fake terminals, fake blockchain nodes and decorative particles",
+      "APY, projections or reward forecasts presented as outcomes",
       "Multiple always-running WebGL canvases",
-      "New generated CPU character artwork"
+      "New generated CPU character artwork or generic sci-fi armour"
     ]
   },
   "decisions": [
     {
-      "choice": "Promote the existing raw WebGL halftone into one fixed SiteEnvironment and make section roots transparent.",
-      "reason": "The banner/hero atmosphere is the strongest existing visual and solves section fragmentation without changing brand identity."
+      "id": "site-environment",
+      "decision": "Promote the raw WebGL halftone into one fixed SiteEnvironment; section roots stay transparent and GSAP ScrollTrigger re-lights the world per section",
+      "source": "src/features/environment/site-environment.tsx"
     },
     {
-      "choice": "Render the PFP kit with SVG assets composed by Canvas 2D; do not add Three.js.",
-      "reason": "SVG and Canvas provide exact preview/export parity, transparent glass, and independent transforms at substantially lower runtime cost."
+      "id": "pfp-render-pipeline",
+      "decision": "Compose the PFP kit with Canvas 2D from raster/SVG assets extracted from official art; one drawPfp() renders preview and 2048px export; no Three.js",
+      "source": "src/features/engine/compose.ts"
+    },
+    {
+      "id": "interaction-locks",
+      "decision": "src/lib/scroll-lock.ts is the only owner of page scroll locking; loader lifecycle, nav inert/visibility and environment pointer-events are functionally locked",
+      "source": "src/lib/scroll-lock.ts"
     }
   ],
   "evidence": [
@@ -322,7 +340,7 @@
       "source": "src/components/ui"
     },
     {
-      "fact": "design.colorMode:light",
+      "fact": "design.colorMode:light-and-dark",
       "source": "src/app/globals.css"
     },
     {
@@ -354,5 +372,5 @@
       "source": "package.json"
     }
   ],
-  "generatedAt": "2026-09-25T18:19:46.755Z"
+  "generatedAt": "2026-09-25T20:35:02.041Z"
 }

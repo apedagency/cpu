@@ -1,56 +1,81 @@
-import type { BackgroundId, EffectId, LayerId } from "./manifest";
+import { DEFAULTS, type LayerId } from "./manifest";
 
-export interface LayerTransform {
+export interface Transform {
+  /** Offset in stage fractions. */
   x: number;
   y: number;
   scale: number;
+  /** Degrees. */
   rotation: number;
-  opacity: number;
 }
+
+/**
+ * `head` moves the visor and crown together. While the head kit is linked
+ * (the default) visor and helmet gestures write to `head`, so both pivot on
+ * the same point and can't drift apart; unlinked, they write their own local
+ * transform nested inside the head frame.
+ */
+export type TransformId = "userPfp" | "head" | "visor" | "helmet" | "body";
 
 export interface PfpState {
-  background: BackgroundId;
-  effect: EffectId;
   selected: LayerId;
-  linkedKit: boolean;
-  transforms: Record<LayerId, LayerTransform>;
+  linked: boolean;
+  glass: number;
+  transforms: Record<TransformId, Transform>;
 }
 
-export const DEFAULT_TRANSFORMS: Record<LayerId, LayerTransform> = {
-  userPfp: { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 },
-  body: { x: 0, y: 0.03, scale: 1, rotation: 0, opacity: 1 },
-  helmet: { x: 0, y: -0.01, scale: 1, rotation: 0, opacity: 1 },
-  visor: { x: 0, y: 0, scale: 1, rotation: 0, opacity: 0.92 },
-};
+export const IDENTITY: Transform = { x: 0, y: 0, scale: 1, rotation: 0 };
 
-export const DEFAULT_STATE: PfpState = {
-  background: "glass",
-  effect: "glow",
-  selected: "userPfp",
-  linkedKit: true,
-  transforms: structuredClone(DEFAULT_TRANSFORMS),
-};
+const fresh = (): Record<TransformId, Transform> => ({
+  userPfp: { ...IDENTITY },
+  head: { ...IDENTITY },
+  visor: { ...IDENTITY },
+  helmet: { ...IDENTITY },
+  body: { ...IDENTITY },
+});
 
-export const TRANSFORM_LIMITS = {
-  x: [-0.5, 0.5],
-  y: [-0.5, 0.5],
-  scale: [0.45, 1.8],
-  rotation: [-90, 90],
-  opacity: [0.15, 1],
+export function freshState(): PfpState {
+  return { selected: "userPfp", linked: true, glass: DEFAULTS.glass, transforms: fresh() };
+}
+
+/** The transform a gesture on `layer` edits. */
+export function targetOf(layer: LayerId, linked: boolean): TransformId {
+  if (linked && (layer === "visor" || layer === "helmet")) return "head";
+  return layer;
+}
+
+const LIMITS = {
+  offset: 0.65,
+  scale: { userPfp: [0.4, 4], kit: [0.35, 2.4] },
 } as const;
 
-export const clamp = (value: number, [min, max]: readonly [number, number]) => Math.min(max, Math.max(min, value));
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-export function cleanTransform(next: LayerTransform): LayerTransform {
+export function clean(id: TransformId, t: Transform): Transform {
+  const [lo, hi] = id === "userPfp" ? LIMITS.scale.userPfp : LIMITS.scale.kit;
+  let rotation = ((((t.rotation + 180) % 360) + 360) % 360) - 180;
+  if (Math.abs(rotation) < 0.01) rotation = 0;
   return {
-    x: clamp(next.x, TRANSFORM_LIMITS.x),
-    y: clamp(next.y, TRANSFORM_LIMITS.y),
-    scale: clamp(next.scale, TRANSFORM_LIMITS.scale),
-    rotation: clamp(next.rotation, TRANSFORM_LIMITS.rotation),
-    opacity: clamp(next.opacity, TRANSFORM_LIMITS.opacity),
+    x: clamp(t.x, -LIMITS.offset, LIMITS.offset),
+    y: clamp(t.y, -LIMITS.offset, LIMITS.offset),
+    scale: clamp(t.scale, lo, hi),
+    rotation,
   };
 }
 
-export function freshDefaultState(): PfpState {
-  return { ...DEFAULT_STATE, transforms: structuredClone(DEFAULT_TRANSFORMS) };
+/** Resetting either half of a linked head kit resets the whole kit. */
+export function resetLayer(state: PfpState, layer: LayerId): PfpState {
+  const transforms = { ...state.transforms };
+  if (layer === "visor" || layer === "helmet") {
+    if (state.linked) {
+      transforms.head = { ...IDENTITY };
+      transforms.visor = { ...IDENTITY };
+      transforms.helmet = { ...IDENTITY };
+    } else {
+      transforms[layer] = { ...IDENTITY };
+    }
+    return { ...state, transforms, glass: layer === "visor" ? DEFAULTS.glass : state.glass };
+  }
+  transforms[layer] = { ...IDENTITY };
+  return { ...state, transforms };
 }

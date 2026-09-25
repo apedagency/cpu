@@ -42,10 +42,11 @@ type EnvironmentState = {
 const STATES: Record<string, EnvironmentState> = {
   top: { shader: 1, glowX: "52%", glowY: "42%", glow: 0.82, glass: 0.08, lines: 0.05, shade: 0.22 },
   lore: { shader: 0.5, glowX: "76%", glowY: "30%", glow: 0.34, glass: 0.04, lines: 0.02, shade: 0.5 },
-  compute: { shader: 0.22, glowX: "82%", glowY: "18%", glow: 0.22, glass: 0.03, lines: 0.18, shade: 0.66 },
+  // Utility sections sit on calm ground: little shader, almost no lines.
+  compute: { shader: 0.12, glowX: "20%", glowY: "22%", glow: 0.2, glass: 0.02, lines: 0.03, shade: 0.78 },
   engine: { shader: 0.32, glowX: "58%", glowY: "46%", glow: 0.48, glass: 0.64, lines: 0.08, shade: 0.44 },
   gallery: { shader: 0.46, glowX: "38%", glowY: "48%", glow: 0.42, glass: 0.18, lines: 0.04, shade: 0.42 },
-  market: { shader: 0.16, glowX: "28%", glowY: "18%", glow: 0.2, glass: 0.04, lines: 0.22, shade: 0.7 },
+  market: { shader: 0.1, glowX: "28%", glowY: "18%", glow: 0.18, glass: 0.02, lines: 0.03, shade: 0.8 },
   footer: { shader: 0.38, glowX: "50%", glowY: "88%", glow: 0.34, glass: 0.12, lines: 0.04, shade: 0.54 },
 };
 

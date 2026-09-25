@@ -1,77 +1,68 @@
-import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { DiscordIcon, XIcon } from "@/components/brand/marks";
 import { ContractCopy } from "@/components/contract-copy";
-import { TangleFooter } from "@/components/ui/tangle-footer";
+import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 import { links, network, pairedAsset, pool, site } from "@/lib/config";
-
-const RIBBONS = [
-  site.name,
-  site.tagline,
-  `Paired with ${pairedAsset.name}`,
-  `Fees stream to holders in ${pairedAsset.wrapper.symbol}`,
-  `${network.name} · ${pool.launchpad} · ${pool.venue}`,
-];
 
 const LINKS = [
   { label: "X", href: links.x, icon: <XIcon className="size-4" /> },
   { label: "Dexscreener", href: links.dexscreener, icon: null },
+  { label: "Signal", href: links.signal, icon: null },
   { label: "Discord", href: links.discord, icon: <DiscordIcon className="size-4" /> },
 ];
 
+/**
+ * The close: the launch line, the contract as one big copyable line, links
+ * as text, and the stencil wordmark from the hero lit by the cursor.
+ */
 export function SiteFooter() {
   return (
     <footer id="footer" className="relative overflow-hidden" aria-labelledby="footer-title">
-      <TangleFooter lines={RIBBONS} seed={31}>
-        <div className="relative h-full w-full">
-          <Image
-            src="/art/character/bust.webp"
-            alt=""
-            fill
-            sizes="(max-width: 768px) 30vw, 22vw"
-            className="object-cover object-top"
-          />
-        </div>
-      </TangleFooter>
-
-      <div className="relative border-t border-mint/10 px-(--gutter) pb-10 pt-10">
-        <div className="flex flex-wrap items-start justify-between gap-x-12 gap-y-8">
-          <div className="flex items-center gap-4">
-            <Image src="/art/gallery/sticker.webp" alt="" width={56} height={56} className="size-14 rounded-full ring-1 ring-mint/30" />
-            <div>
-              <p id="footer-title" className="text-lg font-semibold text-paper">
-                {site.name}
-              </p>
-              <p className="type-display text-2xl text-mint">${site.ticker}</p>
+      <div className="px-(--gutter) pt-[clamp(6rem,12vw,11rem)]">
+        <div className="grid gap-x-16 gap-y-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div>
+            <p id="footer-title" className="text-[clamp(2.25rem,5vw,4.5rem)] font-semibold leading-[0.95] tracking-[-0.035em] text-paper [font-variation-settings:'wdth'_110,'opsz'_144]">
+              {site.tagline.replace(" the connection.", "")}
+              <br />
+              <span className="text-mint">the connection.</span>
+            </p>
+            <div className="mt-10 max-w-full">
+              <p className="mb-2 text-xs text-paper/40">Contract · {network.name}</p>
+              <ContractCopy variant="plain-full" className="text-paper/80 [&_span.font-mono]:text-[clamp(0.8rem,1.6vw,1.2rem)]" />
             </div>
           </div>
 
-          <div className="flex w-full max-w-xl flex-col gap-3">
-            <ContractCopy variant="full" className="w-full" label="Contract" />
-            <ul className="flex flex-wrap gap-2">
-              {LINKS.map((l) => (
-                <li key={l.label}>
-                  <a
-                    href={l.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center gap-2 rounded-md border border-mint/15 px-4 text-sm font-medium text-paper transition-colors hover:border-teal/60 hover:text-teal"
-                  >
-                    {l.icon}
-                    {l.label}
-                    <ArrowUpRight className="size-3.5 opacity-60" aria-hidden="true" />
-                    <span className="sr-only">(opens in a new tab)</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ul className="flex flex-wrap gap-x-8 gap-y-3 lg:flex-col lg:items-end lg:gap-y-2">
+            {LINKS.map((l) => (
+              <li key={l.label}>
+                <a
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex min-h-11 items-center gap-2 text-lg font-medium text-paper/80 transition-colors hover:text-paper"
+                >
+                  {l.icon}
+                  <span className="underline-offset-[6px] group-hover:underline">{l.label}</span>
+                  <ArrowUpRight className="size-4 text-mint/70 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+                  <span className="sr-only">(opens in a new tab)</span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
+      </div>
 
-        <p className="mt-10 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-          {site.domain.replace("https://", "")} · {network.name}. Not financial advice. Holder rewards depend on trading
-          activity and are paid in {pairedAsset.wrapper.symbol} only as the contract distributes them; nothing here is a
-          promised return. {pairedAsset.name} is a trademark of NVIDIA Corporation, which is not affiliated with this project.
+      <div className="mt-[clamp(3rem,7vw,6rem)] px-[calc(var(--gutter)*0.5)]">
+        <TextHoverEffect text={`$${site.ticker}`} />
+      </div>
+
+      <div className="flex flex-wrap items-baseline justify-between gap-x-10 gap-y-3 px-(--gutter) pb-8 pt-6 text-xs text-paper/40">
+        <p>
+          {site.name} · {network.name} · {pool.launchpad} · {pool.venue}
+        </p>
+        <p className="max-w-3xl leading-relaxed lg:text-right">
+          Not financial advice. Holder rewards depend on trading activity and are paid in {pairedAsset.wrapper.symbol} only as the contract distributes
+          them; nothing here is a promised return. {pairedAsset.name} is a trademark of NVIDIA Corporation, which is not affiliated with this project.
         </p>
       </div>
     </footer>

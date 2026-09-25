@@ -1,15 +1,14 @@
-import StickyContentWrapper, { type StickyContentItem } from "@/components/ui/sticky-content-wrapper";
+import { ScrollRevealContent, type RevealStep } from "@/components/ui/scroll-reveal-content";
 import VariableTextProximity from "@/components/ui/variable-text-proximity";
 import { pairedAsset, pool } from "@/lib/config";
 
 /* The mechanism figures below are snapshotted into the token at launch
    (Signal: "per-token terms … cannot change under a live token"); Compute
    reads the same terms live. */
-const STEPS: StickyContentItem[] = [
+const STEPS: RevealStep[] = [
   {
     id: "cat",
-    eyebrow: "The cat",
-    heading: "Cat Purrcessing Unit.",
+    title: "Cat Purrcessing Unit.",
     body: (
       <>
         <p>
@@ -18,14 +17,14 @@ const STEPS: StickyContentItem[] = [
         <p>A HyperEVM token, launched on {pool.launchpad}.</p>
       </>
     ),
-    image: "/art/gallery/hero-render.webp",
-    alt: "CPU standing on a teal-lit stage in full exosuit",
-    fit: "cover",
+    image: "/art/campaign/06-the-cat.webp",
+    alt: "CPU standing alone in a vast dark chamber with a mint-lit reflective floor",
+    focus: "38% 62%",
+    zoom: 1.04,
   },
   {
     id: "pair",
-    eyebrow: "The pair",
-    heading: <>Paired with {pairedAsset.name}.</>,
+    title: <>Paired with {pairedAsset.name}.</>,
     body: (
       <>
         <p>
@@ -34,14 +33,13 @@ const STEPS: StickyContentItem[] = [
         </p>
       </>
     ),
-    image: "/art/gallery/bust.webp",
-    alt: "Official CPU portrait: visor glowing with the Hyperliquid mark",
-    fit: "cover",
+    image: "/art/campaign/08-the-pair.webp",
+    alt: "CPU between a monumental Hyperliquid glass form and a suspended processor",
+    focus: "50% 56%",
   },
   {
     id: "flow",
-    eyebrow: "The flow",
-    heading: "Fees stream to holders.",
+    title: "Fees stream to holders.",
     body: (
       <>
         <p>
@@ -53,10 +51,9 @@ const STEPS: StickyContentItem[] = [
         </p>
       </>
     ),
-    image: "/art/banner/banner-a.webp",
-    alt: "CPU standing among halftone green waves and glass Hyperliquid coins",
-    fit: "cover",
-    mediaClassName: "[&_img]:object-[50%_50%]",
+    image: "/art/campaign/09-the-flow.webp",
+    alt: "CPU beside luminous mint particles flowing through transparent glass channels",
+    focus: "58% 50%",
   },
 ];
 
@@ -82,7 +79,7 @@ export function Lore() {
           textClassName="text-[clamp(2rem,5.2vw,5.25rem)] leading-[1.02] text-paper"
         />
       </div>
-      <StickyContentWrapper items={STEPS} />
+      <ScrollRevealContent steps={STEPS} className="pb-[clamp(3rem,6vw,5rem)]" />
     </section>
   );
 }
