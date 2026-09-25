@@ -1,0 +1,206 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * CPU colour system — sampled from x-banner + the character sheet.
+ * Dark first: black / green-black carry the page, teal + mint carry
+ * the energy, white is for type. Pink exists only on the cat.
+ * ------------------------------------------------------------------ */
+:root {
+  --cpu-black: #0b0f12;
+  --cpu-ink-1: #031613;
+  --cpu-ink-2: #04201b;
+  --cpu-ink-3: #052923;
+  --cpu-visor: #042826;
+  --cpu-forest: #196542;
+  --cpu-graphite: #2a2f36;
+  --cpu-teal: #00f0e6;
+  --cpu-mint: #97fce4; /* Hyperliquid brand green, matches banner halftone */
+  --cpu-white: #fbf9fb;
+  --cpu-fog: #d7e0eb;
+  --cpu-muted: #9fb5ae;
+
+  /* shadcn / 21st token contract, mapped onto the CPU palette */
+  --background: var(--cpu-black);
+  --foreground: var(--cpu-white);
+  --card: var(--cpu-ink-2);
+  --card-foreground: var(--cpu-white);
+  --popover: var(--cpu-ink-2);
+  --popover-foreground: var(--cpu-white);
+  --primary: var(--cpu-teal);
+  --primary-foreground: var(--cpu-ink-1);
+  --secondary: var(--cpu-ink-3);
+  --secondary-foreground: var(--cpu-white);
+  --muted: #0a2621;
+  --muted-foreground: var(--cpu-muted);
+  --accent: var(--cpu-mint);
+  --accent-foreground: var(--cpu-ink-1);
+  --border: rgb(151 252 228 / 0.13);
+  --input: rgb(151 252 228 / 0.18);
+  --ring: var(--cpu-teal);
+  --chart-1: var(--cpu-teal);
+  --chart-2: var(--cpu-teal);
+  --chart-down: var(--cpu-fog);
+  --radius: 0.5rem;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+  --gutter: clamp(1rem, 4vw, 3.5rem);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+
+  --color-cpu-black: var(--cpu-black);
+  --color-ink-1: var(--cpu-ink-1);
+  --color-ink-2: var(--cpu-ink-2);
+  --color-ink-3: var(--cpu-ink-3);
+  --color-visor: var(--cpu-visor);
+  --color-forest: var(--cpu-forest);
+  --color-graphite: var(--cpu-graphite);
+  --color-teal: var(--cpu-teal);
+  --color-mint: var(--cpu-mint);
+  --color-paper: var(--cpu-white);
+  --color-fog: var(--cpu-fog);
+
+  --font-sans: var(--font-flex), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  --ease-out-expo: var(--ease-out-expo);
+  --ease-in-out-quart: var(--ease-in-out-quart);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    background: var(--cpu-black);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+    overflow-x: clip;
+  }
+
+  body {
+    min-height: 100dvh;
+    background: var(--cpu-black);
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background: var(--cpu-teal);
+    color: var(--cpu-ink-1);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--cpu-teal);
+    outline-offset: 3px;
+  }
+
+  [id] {
+    scroll-margin-top: 5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Intro gate: repeat visits (session) and reduced motion never paint the loader. */
+html[data-intro="seen"] .site-loader {
+  display: none;
+}
+
+@layer components {
+  /* Display type: Roboto Flex pushed wide + heavy for the big CPU moments. */
+  .type-display {
+    font-family: var(--font-sans);
+    font-variation-settings: "wdth" 151, "opsz" 144;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 0.82;
+  }
+
+  .type-condensed {
+    font-variation-settings: "wdth" 25, "opsz" 72;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  /* Quiet uppercase label used for data captions. */
+  .type-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--cpu-muted);
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Halftone dot field used as a quiet section texture (CSS, no canvas). */
+  .halftone-field {
+    background-image: radial-gradient(rgb(151 252 228 / 0.16) 1px, transparent 1.6px);
+    background-size: 10px 10px;
+    mask-image: radial-gradient(120% 80% at 70% 20%, black 0%, transparent 70%);
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgb(151 252 228 / 0.05) 0%,
+      rgb(151 252 228 / 0.12) 50%,
+      rgb(151 252 228 / 0.05) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
