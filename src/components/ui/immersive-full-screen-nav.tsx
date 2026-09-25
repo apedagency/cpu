@@ -1,5 +1,6 @@
 // Built using Hyperiux Vault: https://vault.hyperiux.com
-// CPU adaptation: header colours and content are slots (the site is dark),
+// CPU adaptation: header colours and content are slots (the site is dark) laid
+// out as a brand / centre / actions grid with a two-line toggle,
 // the closed panel is `inert` so its links leave the tab order, link clicks
 // hand navigation back to the page after the panel closes, and the panel's
 // media / socials / meta rows take arbitrary content.
@@ -145,8 +146,14 @@ const prefersReducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
 
 export interface FullscreenNavProps {
-  /** Header content left of the toggle (brand, inline links, contract…). Read state with useNavState(). */
-  header: ReactNode;
+  /**
+   * The header is a `1fr auto 1fr` grid, so `center` sits on the viewport's
+   * centre line whatever the widths of `brand` and `actions`. `actions`
+   * render immediately left of the toggle. Read state with useNavState().
+   */
+  brand: ReactNode;
+  center?: ReactNode;
+  actions?: ReactNode;
   clipOrigin?: keyof typeof CLIPS;
   overlayBg?: string;
   headerClassName?: string;
@@ -161,7 +168,9 @@ export interface FullscreenNavProps {
 }
 
 export function FullscreenNav({
-  header,
+  brand,
+  center,
+  actions,
   clipOrigin = "bottom",
   overlayBg = "#000000",
   headerClassName = "",
@@ -272,38 +281,38 @@ export function FullscreenNav({
     <NavContext.Provider value={api}>
     <div ref={rootRef}>
       <header
-        className={`fixed inset-x-0 top-0 z-70 flex h-16 items-center gap-4 px-(--gutter) md:h-20 ${headerClassName}`}
+        className={`fixed inset-x-0 top-0 z-70 grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-x-6 px-(--gutter) md:h-18 ${headerClassName}`}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-4">
-          {header}
+        <div className="flex min-w-0 items-center justify-self-start">{brand}</div>
+        <div className="flex items-center justify-self-center">{center}</div>
+        <div className="flex items-center gap-3 justify-self-end">
+          {actions}
+          {/* Two-line mark: the short lower line reaches full width on hover,
+              and both lines meet in an X while open. */}
+          <button
+            ref={toggleButtonRef}
+            onClick={onToggleMenu}
+            aria-label={isOpen ? "Close menu" : "Open menu"}
+            aria-expanded={isOpen}
+            aria-controls="site-menu"
+            className="group/toggle -mr-2.5 grid size-11 shrink-0 cursor-pointer place-items-center rounded-xs"
+          >
+            <span aria-hidden="true" className="relative block h-3 w-5.5">
+              <span
+                style={{ backgroundColor: bar }}
+                className={`absolute inset-x-0 top-0 h-0.5 transition-[translate,rotate,background-color] duration-300 ease-in-out motion-reduce:transition-none ${
+                  isOpen ? "translate-y-1.25 rotate-45" : ""
+                }`}
+              />
+              <span
+                style={{ backgroundColor: bar }}
+                className={`absolute right-0 bottom-0 h-0.5 transition-[left,translate,rotate,background-color] duration-300 ease-in-out motion-reduce:transition-none ${
+                  isOpen ? "left-0 -translate-y-1.25 -rotate-45" : "left-[40%] group-hover/toggle:left-0"
+                }`}
+              />
+            </span>
+          </button>
         </div>
-        <button
-          ref={toggleButtonRef}
-          onClick={onToggleMenu}
-          aria-label={isOpen ? "Close menu" : "Open menu"}
-          aria-expanded={isOpen}
-          aria-controls="site-menu"
-          className="-mr-2 flex size-11 shrink-0 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md px-2.5"
-        >
-          <span
-            style={{ backgroundColor: bar }}
-            className={`block h-0.5 w-full transition-transform duration-300 ease-in-out motion-reduce:transition-none ${
-              isOpen ? "translate-y-2 rotate-45" : ""
-            }`}
-          />
-          <span
-            style={{ backgroundColor: bar }}
-            className={`block h-0.5 w-full transition-[opacity,transform] duration-300 motion-reduce:transition-none ${
-              isOpen ? "scale-x-0 opacity-0" : ""
-            }`}
-          />
-          <span
-            style={{ backgroundColor: bar }}
-            className={`block h-0.5 w-full transition-transform duration-300 ease-in-out motion-reduce:transition-none ${
-              isOpen ? "-translate-y-2 -rotate-45" : ""
-            }`}
-          />
-        </button>
       </header>
 
       <nav

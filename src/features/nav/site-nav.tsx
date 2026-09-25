@@ -1,12 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowUpRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowUpRight, Check, Copy } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DiscordIcon, XIcon } from "@/components/brand/marks";
 import { ContractCopy } from "@/components/contract-copy";
 import { FullscreenNav, NavLinkHover, useNavState, useStaggerReveal } from "@/components/ui/immersive-full-screen-nav";
-import { links, nav, network, pairedAsset, site } from "@/lib/config";
+import { useCopy } from "@/hooks/use-copy";
+import { links, nav, network, pairedAsset, site, token } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 const SOCIALS = [
@@ -127,6 +128,7 @@ function Panel() {
           ))}
         </ul>
         <div data-reveal="meta" className="w-full max-w-md opacity-0">
+          <p className="type-label">Contract Address</p>
           <ContractCopy variant="plain-full" className="w-full" />
         </div>
       </div>
@@ -134,73 +136,172 @@ function Panel() {
   );
 }
 
-function HeaderContent({ scrolledActive: active }: { scrolledActive: string | null }) {
-  const { isOpen } = useNavState();
-  return (
-        <>
-          <a
-            href="#top"
-            className="flex shrink-0 items-center gap-3"
-            onClick={(e) => {
-              if (isOpen) return;
-              e.preventDefault();
-              window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-              history.replaceState(null, "", " ");
-            }}
-          >
-            <Image
-              src="/art/gallery/sticker.webp"
-              alt=""
-              width={36}
-              height={36}
-              className="size-9 rounded-full ring-1 ring-mint/30"
-              priority
-            />
-            <span className="type-display text-[1.35rem] text-paper">CPU</span>
-            <span className="sr-only">{site.name} — back to top</span>
-          </a>
+const EASE_ROLL = "duration-500 ease-[cubic-bezier(0.625,0.05,0,1)] motion-reduce:transition-none";
 
-          <ul
-            className={cn(
-              "ml-auto hidden items-center gap-1 transition-opacity duration-300 lg:flex",
-              isOpen && "pointer-events-none opacity-0",
-            )}
-          >
-            {nav.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={`#${item.id}`}
-                  aria-current={active === item.id ? "true" : undefined}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    goTo(item.id);
-                  }}
-                  className={cn(
-                    "relative inline-flex min-h-11 items-center px-3 text-sm font-medium text-paper/70 transition-colors hover:text-paper",
-                    active === item.id && "text-paper",
-                  )}
-                >
-                  {item.label}
+/** Header-only controls step back while the fullscreen panel is open. */
+const hiddenWhileOpen = (isOpen: boolean) =>
+  cn("transition-[opacity,visibility] duration-300", isOpen && "invisible opacity-0");
+
+function Brand() {
+  const { isOpen, close } = useNavState();
+  return (
+    <a
+      href="#top"
+      className="group/brand flex shrink-0 items-center gap-2.5"
+      onClick={(e) => {
+        e.preventDefault();
+        const toTop = () => {
+          window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+          history.replaceState(null, "", " ");
+        };
+        if (isOpen) close(toTop);
+        else toTop();
+      }}
+    >
+      <Image
+        src="/art/gallery/sticker.webp"
+        alt=""
+        width={32}
+        height={32}
+        className="size-8 rounded-full ring-1 ring-mint/25 transition-shadow duration-300 group-hover/brand:ring-teal/60"
+        priority
+      />
+      <span className="type-display text-[1.25rem] text-paper">CPU</span>
+      <span className="sr-only">{site.name} — back to top</span>
+    </a>
+  );
+}
+
+/**
+ * Centre links after 21st.dev's Elevate Navbar (hyperiux): a hovered label
+ * rolls up to a copy of itself while its siblings dim. Its grey pill and
+ * dropdowns are dropped; one teal rule slides to the current section instead.
+ */
+function CenterNav({ active }: { active: string | null }) {
+  const { isOpen } = useNavState();
+  const navRef = useRef<HTMLElement>(null);
+  const ruleRef = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const root = navRef.current;
+    const rule = ruleRef.current;
+    if (!root || !rule) return;
+
+    const place = (slide: boolean) => {
+      const label = active ? root.querySelector<HTMLElement>(`[data-label="${active}"]`) : null;
+      if (!label) {
+        rule.style.opacity = "0";
+        return;
+      }
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // Fade in where it lands; only slide from one link to the next.
+      rule.style.transitionProperty = slide && !reduce && rule.style.opacity === "1" ? "transform, opacity" : "opacity";
+      const x = label.getBoundingClientRect().left - root.getBoundingClientRect().left;
+      rule.style.transform = `translateX(${x}px) scaleX(${label.offsetWidth})`;
+      rule.style.opacity = "1";
+    };
+
+    place(true);
+    // Re-measure when the row itself changes width (breakpoint, font swap).
+    let width = root.offsetWidth;
+    const ro = new ResizeObserver(() => {
+      if (root.offsetWidth === width) return;
+      width = root.offsetWidth;
+      place(false);
+    });
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [active]);
+
+  return (
+    <nav ref={navRef} aria-label="Primary" inert={isOpen} className={cn("relative hidden lg:block", hiddenWhileOpen(isOpen))}>
+      <ul className="group/nav flex items-center">
+        {nav.map((item) => {
+          const current = active === item.id;
+          return (
+            <li key={item.id}>
+              <a
+                href={`#${item.id}`}
+                aria-current={current ? "location" : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  goTo(item.id);
+                }}
+                className={cn(
+                  "group/link inline-flex min-h-11 items-center px-3.5 text-sm font-medium transition-colors duration-300",
+                  current ? "text-paper" : "text-paper/60",
+                  "group-has-[a:hover]/nav:text-paper/40 hover:text-paper!",
+                )}
+              >
+                <span data-label={item.id} className="relative block overflow-hidden">
+                  <span className={cn("block transition-transform group-hover/link:-translate-y-full", EASE_ROLL)}>
+                    {item.label}
+                  </span>
                   <span
                     aria-hidden="true"
-                    className={cn(
-                      "absolute inset-x-3 bottom-2 h-px origin-left scale-x-0 bg-teal transition-transform duration-500 ease-out",
-                      active === item.id && "scale-x-100",
-                    )}
-                  />
-                </a>
-              </li>
-            ))}
-          </ul>
+                    className={cn("absolute inset-0 translate-y-full transition-transform group-hover/link:translate-y-0 motion-reduce:hidden", EASE_ROLL)}
+                  >
+                    {item.label}
+                  </span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+      <span
+        ref={ruleRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-2 left-0 h-px w-px origin-left bg-teal opacity-0 duration-500 ease-[cubic-bezier(0.625,0.05,0,1)]"
+      />
+    </nav>
+  );
+}
 
-          <ContractCopy
-            variant="plain"
-            className={cn(
-              "ml-auto hidden md:inline-flex lg:ml-4",
-              isOpen && "pointer-events-none opacity-0",
-            )}
-          />
-        </>
+/**
+ * A quiet utility, not a CTA: it reads "Contract Address", copies the full
+ * address, and rolls to "Copied" (the Elevate CTA's text swap) for a moment.
+ */
+function ContractButton() {
+  const { isOpen } = useNavState();
+  const { copy, copied, failed } = useCopy();
+  const swapped = copied || failed;
+
+  return (
+    // Below 420px the brand and menu get the row; the address lives in the menu.
+    <div inert={isOpen} className={cn("hidden min-[420px]:block", hiddenWhileOpen(isOpen))}>
+      <button
+        type="button"
+        onClick={() => void copy(token.address)}
+        aria-label={`Copy ${token.symbol} contract address`}
+        className={cn(
+          "relative inline-flex h-9 cursor-pointer items-center gap-2 rounded-xs border bg-ink-1/40 px-3.5 text-[0.8125rem] font-medium whitespace-nowrap",
+          "transition-[background-color,border-color,color] duration-300 hover:bg-teal/8",
+          // 44px hit area around the 36px chip.
+          "before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
+          copied ? "border-teal/70 text-teal" : "border-teal/30 text-paper/85 hover:border-teal/60 hover:text-paper",
+        )}
+      >
+        <span className="grid overflow-hidden">
+          <span className={cn("col-start-1 row-start-1 transition-transform", EASE_ROLL, swapped ? "-translate-y-full" : "translate-y-0")}>
+            Contract Address
+          </span>
+          <span
+            aria-hidden="true"
+            className={cn("col-start-1 row-start-1 text-center transition-transform", EASE_ROLL, swapped ? "translate-y-0" : "translate-y-full")}
+          >
+            {failed ? "Copy failed" : "Copied"}
+          </span>
+        </span>
+        <span className="relative grid size-3.5 place-items-center" aria-hidden="true">
+          <Copy className={cn("size-3.5 text-mint/60 transition-opacity duration-300", copied ? "opacity-0" : "opacity-100")} />
+          <Check className={cn("absolute size-3.5 text-teal transition-opacity duration-300", copied ? "opacity-100" : "opacity-0")} />
+        </span>
+      </button>
+      <span role="status" aria-live="polite" className="sr-only">
+        {copied ? "Contract address copied" : failed ? "Copy blocked. The full address is listed in the menu." : ""}
+      </span>
+    </div>
   );
 }
 
@@ -216,12 +317,12 @@ export function SiteNav() {
       openDuration={1}
       closeDuration={1}
       headerClassName={cn(
-        "transition-[background-color,border-color,backdrop-filter] duration-500",
-        scrolled
-          ? "border-b border-mint/10 bg-cpu-black/75 backdrop-blur-md"
-          : "border-b border-transparent bg-transparent",
+        "border-b transition-[background-color,border-color,backdrop-filter] duration-500",
+        scrolled ? "border-mint/8 bg-ink-1/70 backdrop-blur-sm" : "border-transparent bg-transparent",
       )}
-      header={<HeaderContent scrolledActive={active} />}
+      brand={<Brand />}
+      center={<CenterNav active={active} />}
+      actions={<ContractButton />}
     >
       <Panel />
     </FullscreenNav>
