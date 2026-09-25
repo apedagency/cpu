@@ -162,7 +162,7 @@ export function TangleFooter({
 
       {width > 0 && bandHeight > 0 ? (
         <svg
-          className="absolute inset-0 size-full transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="absolute inset-0 size-full transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{ opacity: shown || reduce ? 1 : 0, transform: shown || reduce ? "none" : "translateY(12px)" }}
           viewBox={`0 0 ${width} ${bandHeight}`}
           preserveAspectRatio="xMidYMax slice"

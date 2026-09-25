@@ -111,7 +111,7 @@
 
   body {
     min-height: 100dvh;
-    background: var(--cpu-black);
+    background: transparent;
     overflow-x: clip;
   }
 
@@ -141,6 +141,99 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+.site-environment {
+  --env-shader-opacity: 1;
+  --env-glow-x: 52%;
+  --env-glow-y: 42%;
+  --env-glow-opacity: 0.82;
+  --env-glass-opacity: 0.08;
+  --env-lines-opacity: 0.05;
+  --env-shade-opacity: 0.22;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--cpu-black);
+  contain: strict;
+}
+
+.site-environment__shader,
+.site-environment__aurora,
+.site-environment__glass,
+.site-environment__lines,
+.site-environment__shade,
+.site-environment__grain {
+  position: absolute;
+  inset: -8%;
+}
+
+.site-environment__shader {
+  inset: 0;
+  opacity: var(--env-shader-opacity);
+  transform: scale(1.04);
+  transition: opacity 500ms ease-out;
+}
+
+.site-environment__aurora {
+  opacity: var(--env-glow-opacity);
+  background:
+    radial-gradient(42% 46% at var(--env-glow-x) var(--env-glow-y), rgb(0 240 230 / 0.13), transparent 72%),
+    radial-gradient(70% 58% at 52% 110%, rgb(25 101 66 / 0.2), transparent 68%);
+  filter: blur(18px);
+}
+
+.site-environment__glass {
+  opacity: var(--env-glass-opacity);
+  background:
+    radial-gradient(42% 28% at 60% 48%, rgb(151 252 228 / 0.14), transparent 64%),
+    conic-gradient(from 204deg at 55% 52%, transparent 0 21%, rgb(151 252 228 / 0.11) 25%, transparent 31% 100%);
+  filter: blur(9px) saturate(1.3);
+  transform: rotate(-6deg) scale(1.08);
+}
+
+.site-environment__lines {
+  opacity: var(--env-lines-opacity);
+  background: repeating-linear-gradient(100deg, transparent 0 28px, rgb(151 252 228 / 0.15) 29px, transparent 30px 68px);
+  mask-image: linear-gradient(to bottom, transparent, black 22%, black 78%, transparent);
+  transform: translate3d(-3%, 0, 0);
+}
+
+.site-environment__shade {
+  inset: 0;
+  opacity: var(--env-shade-opacity);
+  background: radial-gradient(80% 70% at 50% 42%, transparent 18%, rgb(2 12 10 / 0.76) 100%);
+}
+
+.site-environment__grain {
+  inset: 0;
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.75'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-environment__shader,
+  .site-environment__aurora,
+  .site-environment__glass,
+  .site-environment__lines,
+  .site-environment__shade {
+    transition: none;
+  }
+}
+
+/* The environment is decoration: nothing inside it may ever take input. */
+.site-environment,
+.site-environment * {
+  pointer-events: none;
+}
+
+/* Only src/lib/scroll-lock.ts toggles this; vertical scroll is native otherwise. */
+html.scroll-locked,
+body.scroll-locked {
+  overflow: hidden;
 }
 
 /* Intro gate: repeat visits (session) and reduced motion never paint the loader. */

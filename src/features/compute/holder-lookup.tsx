@@ -72,7 +72,7 @@ export function HolderLookup({ rewards }: { rewards: RewardSnapshot | null }) {
             aria-invalid={state.kind === "invalid"}
             aria-describedby={`${id}-status`}
             className={cn(
-              "h-11 min-w-0 flex-1 rounded-md border border-mint/20 bg-ink-1 px-3 font-mono text-sm text-paper outline-none transition-colors placeholder:text-paper/30 focus:border-teal",
+              "h-11 min-w-0 flex-1 rounded-md border border-mint/20 bg-ink-1 px-3 font-mono text-sm text-paper outline-none transition-colors placeholder:text-paper/30 focus:border-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal",
               state.kind === "invalid" && "border-fog",
             )}
           />

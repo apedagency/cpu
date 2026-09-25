@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048" fill="none">
+  <defs>
+    <linearGradient id="lens" x1="345" y1="625" x2="1700" y2="1118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#97FCE4" stop-opacity=".24"/>
+      <stop offset=".18" stop-color="#0B4A40" stop-opacity=".66"/>
+      <stop offset=".62" stop-color="#031613" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#00F0E6" stop-opacity=".22"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="280" y1="646" x2="1760" y2="1138" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF9FB"/>
+      <stop offset=".2" stop-color="#97FCE4"/>
+      <stop offset=".68" stop-color="#2A2F36"/>
+      <stop offset="1" stop-color="#00F0E6"/>
+    </linearGradient>
+    <radialGradient id="depth" cx="0" cy="0" r="1" gradientTransform="translate(1024 870) rotate(90) scale(390 730)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00F0E6" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#020C0A" stop-opacity=".52"/>
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="16" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <clipPath id="clip"><path d="M278 760C304 626 442 556 610 570L1024 607L1438 570C1606 556 1744 626 1770 760L1790 858C1811 963 1738 1063 1631 1078C1443 1104 1275 1045 1024 938C773 1045 605 1104 417 1078C310 1063 237 963 258 858L278 760Z"/></clipPath>
+  </defs>
+  <path d="M278 760C304 626 442 556 610 570L1024 607L1438 570C1606 556 1744 626 1770 760L1790 858C1811 963 1738 1063 1631 1078C1443 1104 1275 1045 1024 938C773 1045 605 1104 417 1078C310 1063 237 963 258 858L278 760Z" fill="url(#lens)" stroke="url(#rim)" stroke-width="30"/>
+  <g clip-path="url(#clip)">
+    <rect x="240" y="540" width="1570" height="570" fill="url(#depth)"/>
+    <path d="M430 632C681 676 1082 646 1592 600" stroke="#FBF9FB" stroke-opacity=".3" stroke-width="48" stroke-linecap="round"/>
+    <path d="M340 989C682 1054 1171 1023 1705 804" stroke="#00F0E6" stroke-opacity=".13" stroke-width="28" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(875 704) scale(1.48)" fill="#97FCE4" filter="url(#glow)">
+    <path d="M175.11589 99.27891c0 49.46366-30.3687 65.33789-46.47302 51.30413-13.11357-11.5031-17.02471-35.88989-36.81018-38.42055-25.07698-2.99085-27.37764 30.36839-43.94216 30.36839-19.3254 0-23.00642-27.83773-23.00642-42.33179 0-14.72405 4.14115-34.73961 20.47565-34.73961 19.09528 0 20.24566 28.75802 44.17226 27.14754 23.69661-1.61047 24.1567-31.51877 39.80103-44.17224 13.57335-11.27313 45.78283.69019 45.78283 50.84413Z"/>
+  </g>
+</svg>

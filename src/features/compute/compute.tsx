@@ -18,7 +18,7 @@ export function Compute() {
       id="compute"
       tabIndex={-1}
       aria-labelledby="compute-title"
-      className="relative overflow-hidden bg-cpu-black px-(--gutter) py-[clamp(5rem,10vw,9rem)] outline-none"
+      className="relative overflow-hidden px-(--gutter) py-[clamp(5rem,10vw,9rem)]"
     >
       <div
         aria-hidden="true"

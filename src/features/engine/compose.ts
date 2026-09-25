@@ -1,165 +1,113 @@
-import { HYPERLIQUID_PATH, HYPERLIQUID_VIEWBOX } from "@/components/brand/marks";
-import { manifest, type BackgroundLayer } from "./manifest";
-import type { PfpState } from "./state";
+import { KIT_LAYERS } from "./manifest";
+import type { LayerTransform, PfpState } from "./state";
 
 export type AssetMap = Map<string, HTMLImageElement>;
+export type UserImage = HTMLCanvasElement;
 
-const [VB_X, VB_Y, VB_W, VB_H] = HYPERLIQUID_VIEWBOX.split(" ").map(Number);
-let markPath: Path2D | null = null;
-const getMark = () => (markPath ??= new Path2D(HYPERLIQUID_PATH));
+function drawBackground(ctx: CanvasRenderingContext2D, size: number, state: PfpState) {
+  if (state.background === "ink") {
+    ctx.fillStyle = "#0b0f12";
+    ctx.fillRect(0, 0, size, size);
+    return;
+  }
 
-function drawBackground(ctx: CanvasRenderingContext2D, S: number, bg: BackgroundLayer, assets: AssetMap, seed: number) {
-  switch (bg.kind) {
-    case "solid":
-      ctx.fillStyle = bg.color;
-      ctx.fillRect(0, 0, S, S);
-      return;
-    case "radial": {
-      const g = ctx.createRadialGradient(S * 0.5, S * 0.42, 0, S * 0.5, S * 0.5, S * 0.75);
-      g.addColorStop(0, bg.inner);
-      g.addColorStop(1, bg.outer);
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, S, S);
-      return;
-    }
-    case "halftone": {
-      ctx.fillStyle = bg.ground;
-      ctx.fillRect(0, 0, S, S);
-      // Deterministic wave field in the banner's halftone language.
-      const cell = S / 56;
-      const phase = (seed % 97) / 97;
-      ctx.fillStyle = bg.ink;
-      for (let gy = 0; gy < 58; gy++) {
-        for (let gx = 0; gx < 58; gx++) {
-          const off = gy % 2 ? cell / 2 : 0;
-          const px = gx * cell + off;
-          const py = gy * cell;
-          const u = px / S;
-          const v = py / S;
-          const wave = Math.sin(u * 5.2 + Math.sin(v * 3.1 + phase * 6.28) * 1.6 + phase * 6.28) * 0.5 + 0.5;
-          const band = Math.pow(wave, 2.4) * (0.35 + 0.65 * Math.abs(Math.sin(v * 2.4 + u * 1.3)));
-          const r = band * cell * 0.46;
-          if (r < cell * 0.06) continue;
-          ctx.globalAlpha = 0.35 + band * 0.65;
-          ctx.beginPath();
-          ctx.arc(px, py, r, 0, Math.PI * 2);
-          ctx.fill();
-        }
+  const gradient = ctx.createRadialGradient(size * 0.5, size * 0.42, 0, size * 0.5, size * 0.5, size * 0.78);
+  gradient.addColorStop(0, state.background === "glass" ? "#0b4a40" : "#063128");
+  gradient.addColorStop(0.58, "#031613");
+  gradient.addColorStop(1, "#0b0f12");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  if (state.background === "dots") {
+    const cell = size / 58;
+    ctx.fillStyle = "#97fce4";
+    for (let y = 0; y < 60; y++) {
+      for (let x = 0; x < 60; x++) {
+        const wave = Math.sin(x * 0.19 + Math.sin(y * 0.12) * 2.2) * 0.5 + 0.5;
+        const radius = cell * 0.08 + cell * 0.34 * wave ** 2;
+        ctx.globalAlpha = 0.12 + wave * 0.5;
+        ctx.beginPath();
+        ctx.arc(x * cell + (y % 2 ? cell / 2 : 0), y * cell, radius, 0, Math.PI * 2);
+        ctx.fill();
       }
-      ctx.globalAlpha = 1;
-      return;
     }
-    case "image": {
-      const img = assets.get(bg.src);
-      if (!img) {
-        ctx.fillStyle = "#031613";
-        ctx.fillRect(0, 0, S, S);
-        return;
-      }
-      const scale = Math.max(S / img.naturalWidth, S / img.naturalHeight);
-      const w = img.naturalWidth * scale;
-      const h = img.naturalHeight * scale;
-      ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
-      // Keep the figure legible over the busy environment.
-      const g = ctx.createRadialGradient(S / 2, S * 0.55, S * 0.05, S / 2, S * 0.55, S * 0.6);
-      g.addColorStop(0, "rgba(2,12,10,0.72)");
-      g.addColorStop(1, "rgba(2,12,10,0.05)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, S, S);
-    }
+    ctx.globalAlpha = 1;
   }
 }
 
-export function characterRect(S: number, state: PfpState, img: { width: number; height: number }) {
-  const base = manifest.base.find((b) => b.id === state.base)!;
-  const h = S * base.frame.h * state.zoom;
-  const w = h * (img.width / img.height);
-  const cx = S * (base.frame.x + state.x);
-  const cy = S * (base.frame.y + state.y);
-  return { x: cx - w / 2, y: cy - h / 2, w, h };
+function withTransform(ctx: CanvasRenderingContext2D, size: number, transform: LayerTransform, draw: () => void) {
+  ctx.save();
+  ctx.translate(size * (0.5 + transform.x), size * (0.5 + transform.y));
+  ctx.rotate((transform.rotation * Math.PI) / 180);
+  ctx.scale(transform.scale, transform.scale);
+  ctx.globalAlpha = transform.opacity;
+  draw();
+  ctx.restore();
 }
 
-/**
- * Deterministic layer order: background → back light → character →
- * shade → badges → name. Used for both the live preview and the export.
- */
-export function drawPfp(ctx: CanvasRenderingContext2D, S: number, state: PfpState, assets: AssetMap, fontFamily: string) {
+function drawUserImage(ctx: CanvasRenderingContext2D, size: number, image: UserImage, transform: LayerTransform) {
+  withTransform(ctx, size, transform, () => {
+    const fit = Math.max(size / image.width, size / image.height);
+    const width = image.width * fit;
+    const height = image.height * fit;
+    ctx.drawImage(image, -width / 2, -height / 2, width, height);
+  });
+}
+
+function drawKitLayer(ctx: CanvasRenderingContext2D, size: number, image: HTMLImageElement, transform: LayerTransform) {
+  withTransform(ctx, size, transform, () => ctx.drawImage(image, -size / 2, -size / 2, size, size));
+}
+
+export function drawPfp(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  state: PfpState,
+  assets: AssetMap,
+  userImage: UserImage | null,
+) {
   ctx.save();
-  ctx.clearRect(0, 0, S, S);
+  ctx.clearRect(0, 0, size, size);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
+  drawBackground(ctx, size, state);
 
-  const bg = manifest.backgrounds.find((b) => b.id === state.background)!;
-  drawBackground(ctx, S, bg, assets, state.seed);
-
-  const base = manifest.base.find((b) => b.id === state.base)!;
-  const img = assets.get(base.src);
-  const glow = state.light === "glow" || state.light === "both";
-  const shade = state.light === "shade" || state.light === "both";
-
-  if (img) {
-    const r = characterRect(S, state, base);
-    if (glow) {
-      const g = ctx.createRadialGradient(r.x + r.w / 2, S * 0.55, 0, r.x + r.w / 2, S * 0.55, S * 0.55);
-      g.addColorStop(0, "rgba(0,240,230,0.28)");
-      g.addColorStop(1, "rgba(0,240,230,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, S, S);
-      ctx.shadowColor = "rgba(0,240,230,0.55)";
-      ctx.shadowBlur = S * 0.035;
-    }
-    ctx.drawImage(img, r.x, r.y, r.w, r.h);
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
+  if (userImage) {
+    drawUserImage(ctx, size, userImage, state.transforms.userPfp);
+  } else {
+    const placeholder = ctx.createRadialGradient(size / 2, size * 0.43, 0, size / 2, size * 0.5, size * 0.55);
+    placeholder.addColorStop(0, "rgba(151,252,228,.12)");
+    placeholder.addColorStop(1, "rgba(151,252,228,0)");
+    ctx.fillStyle = placeholder;
+    ctx.fillRect(0, 0, size, size);
   }
 
-  if (shade) {
-    const g = ctx.createRadialGradient(S / 2, S / 2, S * 0.32, S / 2, S / 2, S * 0.74);
-    g.addColorStop(0, "rgba(2,12,10,0)");
-    g.addColorStop(1, "rgba(2,12,10,0.78)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, S, S);
+  if (state.effect === "glow") {
+    const glow = ctx.createRadialGradient(size / 2, size * 0.48, 0, size / 2, size * 0.48, size * 0.62);
+    glow.addColorStop(0, "rgba(0,240,230,.16)");
+    glow.addColorStop(1, "rgba(0,240,230,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, size, size);
   }
 
-  const pad = S * 0.055;
-  if (state.badge === "mark" || state.badge === "both") {
-    const w = S * 0.13;
-    const scale = w / VB_W;
-    const h = VB_H * scale;
-    ctx.save();
-    ctx.translate(S - pad - w, S - pad - h);
-    ctx.scale(scale, scale);
-    ctx.translate(-VB_X, -VB_Y);
-    ctx.shadowColor = "rgba(0,0,0,0.45)";
-    ctx.shadowBlur = 40;
-    ctx.fillStyle = "#97fce4";
-    ctx.fill(getMark());
-    ctx.restore();
-  }
-  if (state.badge === "ticker" || state.badge === "both") {
-    ctx.save();
-    ctx.font = `900 ${Math.round(S * 0.085)}px ${fontFamily}`;
-    ctx.fontVariantCaps = "normal";
-    ctx.textBaseline = "alphabetic";
-    ctx.shadowColor = "rgba(0,0,0,0.5)";
-    ctx.shadowBlur = S * 0.02;
-    ctx.fillStyle = "#97fce4";
-    ctx.fillText("$", pad, S - pad);
-    const dollar = ctx.measureText("$").width;
-    ctx.fillStyle = "#fbf9fb";
-    ctx.fillText("CPU", pad + dollar, S - pad);
-    ctx.restore();
+  for (const id of ["body", "helmet", "visor"] as const) {
+    const layer = KIT_LAYERS.find((item) => item.id === id);
+    const image = layer ? assets.get(layer.src) : null;
+    if (image) drawKitLayer(ctx, size, image, state.transforms[id]);
   }
 
-  if (state.name) {
-    ctx.save();
-    ctx.font = `700 ${Math.round(S * 0.038)}px ${fontFamily}`;
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "rgba(251,249,251,0.92)";
-    ctx.shadowColor = "rgba(0,0,0,0.6)";
-    ctx.shadowBlur = S * 0.015;
-    ctx.fillText(state.name.toUpperCase(), pad, pad);
-    ctx.restore();
+  const reflection = KIT_LAYERS.find((item) => item.id === "reflection");
+  const reflectionImage = reflection ? assets.get(reflection.src) : null;
+  if (reflectionImage) {
+    const visor = state.transforms.visor;
+    drawKitLayer(ctx, size, reflectionImage, { ...visor, opacity: visor.opacity * 0.82 });
+  }
+
+  if (state.effect === "shade") {
+    const shade = ctx.createRadialGradient(size / 2, size / 2, size * 0.28, size / 2, size / 2, size * 0.74);
+    shade.addColorStop(0, "rgba(2,12,10,0)");
+    shade.addColorStop(1, "rgba(2,12,10,.78)");
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, 0, size, size);
   }
 
   ctx.restore();
@@ -172,17 +120,17 @@ export function loadAssets(srcs: string[]): Promise<{ assets: AssetMap; missing:
     srcs.map(
       (src) =>
         new Promise<void>((resolve) => {
-          const img = new Image();
-          img.decoding = "async";
-          img.onload = () => {
-            assets.set(src, img);
+          const image = new Image();
+          image.decoding = "async";
+          image.onload = () => {
+            assets.set(src, image);
             resolve();
           };
-          img.onerror = () => {
+          image.onerror = () => {
             missing.push(src);
             resolve();
           };
-          img.src = src;
+          image.src = src;
         }),
     ),
   ).then(() => ({ assets, missing }));

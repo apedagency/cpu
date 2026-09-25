@@ -85,7 +85,6 @@ function Lightbox({ index, onClose, onStep }: { index: number | null; onClose: (
             type="button"
             onClick={onClose}
             aria-label="Close"
-            autoFocus
             className="absolute right-4 top-4 grid size-11 place-items-center rounded-full border border-mint/20 bg-ink-1/80 hover:border-teal"
           >
             <X className="size-5" aria-hidden="true" />
@@ -118,7 +117,7 @@ export function Gallery() {
   const step = useCallback((d: number) => setOpen((i) => (i === null ? i : (i + d + ART.length) % ART.length)), []);
 
   return (
-    <section id="gallery" tabIndex={-1} aria-labelledby="gallery-title" className="relative bg-ink-1 outline-none">
+    <section id="gallery" tabIndex={-1} aria-labelledby="gallery-title" className="relative">
       <header className="flex flex-wrap items-end justify-between gap-6 px-(--gutter) pb-8 pt-[clamp(5rem,10vw,9rem)]">
         <div>
           <p className="type-label mb-4 text-mint">Gallery</p>

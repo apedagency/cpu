@@ -62,7 +62,7 @@ const STEPS: StickyContentItem[] = [
 
 export function Lore() {
   return (
-    <section id="lore" tabIndex={-1} aria-labelledby="lore-title" className="relative bg-ink-1 outline-none">
+    <section id="lore" tabIndex={-1} aria-labelledby="lore-title" className="relative">
       <div className="halftone-field pointer-events-none absolute inset-x-0 top-0 h-[70svh] opacity-60" aria-hidden="true" />
       <div className="relative px-(--gutter) pb-[clamp(4rem,10vw,9rem)] pt-[clamp(6rem,14vw,12rem)]">
         <h2 id="lore-title" className="type-label mb-8 text-mint">
@@ -82,7 +82,7 @@ export function Lore() {
           textClassName="text-[clamp(2rem,5.2vw,5.25rem)] leading-[1.02] text-paper"
         />
       </div>
-      <StickyContentWrapper items={STEPS} className="bg-ink-1" />
+      <StickyContentWrapper items={STEPS} />
     </section>
   );
 }

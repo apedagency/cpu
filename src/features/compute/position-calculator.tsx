@@ -89,7 +89,7 @@ export function PositionCalculator({ market, rewards }: { market: MarketSnapshot
                 if (n !== null) setCpu(n);
               }}
               onBlur={() => setDraft(amount(cpu, 0))}
-              className="tabular h-11 w-44 rounded-md border border-mint/20 bg-ink-1 px-3 text-right text-paper outline-none transition-colors placeholder:text-paper/30 focus:border-teal"
+              className="tabular h-11 w-44 rounded-md border border-mint/20 bg-ink-1 px-3 text-right text-paper outline-none transition-colors placeholder:text-paper/30 focus:border-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
               aria-describedby={`${inputId}-hint`}
             />
             <span id={`${inputId}-hint`} className="sr-only">

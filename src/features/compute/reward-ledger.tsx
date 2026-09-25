@@ -192,7 +192,7 @@ export function RewardLedger({ live }: { live: Live<RewardSnapshot> }) {
               <div className="flex flex-col gap-2">
                 <span>Releasing over {Math.round(stream.periodSeconds / 60)} min, started {clockTime(stream.startedAt!)}</span>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-mint/10" aria-hidden="true">
-                  <span className="block h-full bg-mint transition-[width] duration-1000 ease-linear" style={{ width: `${Math.min(100, streamProgress * 100)}%` }} />
+                  <span className="block h-full bg-mint transition-[width] duration-500 ease-linear" style={{ width: `${Math.min(100, streamProgress * 100)}%` }} />
                 </div>
               </div>
             ) : (

@@ -128,7 +128,7 @@ function Panel() {
           ))}
         </ul>
         <div data-reveal="meta" className="w-full max-w-md opacity-0">
-          <ContractCopy variant="full" className="w-full" />
+          <ContractCopy variant="plain-full" className="w-full" />
         </div>
       </div>
     </div>
@@ -195,8 +195,9 @@ function HeaderContent({ scrolledActive: active }: { scrolledActive: string | nu
           </ul>
 
           <ContractCopy
+            variant="plain"
             className={cn(
-              "ml-auto hidden sm:inline-flex lg:ml-4",
+              "ml-auto hidden md:inline-flex lg:ml-4",
               isOpen && "pointer-events-none opacity-0",
             )}
           />

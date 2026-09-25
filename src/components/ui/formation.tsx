@@ -587,9 +587,9 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
   }, [mode, cards, S]);
 
   const stageStyle: CustomCSS = {
-    "--fm-bg": "#031613",
+    "--fm-bg": "transparent",
     "--fm-fg": "#fbf9fb",
-    background: "radial-gradient(120% 90% at 50% 40%, #052923 0%, #031613 55%, #0b0f12 100%)",
+    background: "radial-gradient(70% 64% at 50% 45%, rgba(5,41,35,0.58) 0%, rgba(3,22,19,0.2) 58%, transparent 100%)",
     color: "rgba(251,249,251,0.92)",
     touchAction: "pan-y",
   };

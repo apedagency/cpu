@@ -42,20 +42,19 @@ and a failed source renders **Unavailable** — never 0 — while stale data is 
 
 ## PFP Engine layers
 
-The generator composes layers in a fixed order on a canvas (`src/features/engine/compose.ts`); the
-preview and the 2048 × 2048 PNG export use the same code path. Layers are registered in
-`src/features/engine/manifest.ts`:
+The editor is upload-first: users add a PNG, JPEG, or WebP locally, then fit the CPU visor, helmet,
+and body kit over it. The image never leaves the browser. Preview and 2048 × 2048 PNG export share
+the Canvas 2D compositor in `src/features/engine/compose.ts`, so glass, transforms, and effects match.
 
-- `public/pfp/base/` — character bases (bust, hero, stance). Transparent WebP.
-- `public/pfp/backgrounds/` — image backgrounds (banner environment crops). Solid, radial and dot
-  backgrounds are drawn procedurally in the brand palette.
-- `public/pfp/accessories/` — **empty**: no accessory art has been supplied. The category is hidden
-  in the UI until entries are added to `manifest.accessories`.
-- `public/pfp/effects/` — reserved; light (glow / shade) is procedural today.
+Production vector layers are registered in `src/features/engine/manifest.ts` and live under:
 
-To add art: drop a transparent PNG/WebP at the canvas's intended scale into the right folder, add an
-entry to the manifest with its pixel size, and (for accessories) extend `drawPfp` with its slot in
-the layer order. Missing files are skipped and reported in the UI instead of breaking the export.
+- `public/pfp-kit/visor/visor-glass.svg` — transparent optical glass with the exact official mark.
+- `public/pfp-kit/helmet/helmet-shell.svg` — graphite/white shell with a transparent face region.
+- `public/pfp-kit/body/body-kit.svg` — portrait armour frame.
+- `public/pfp-kit/effects/front-reflection.svg` — visor specular reflection.
+
+Each editable layer owns x/y, scale, rotation, and opacity. Helmet and visor can optionally be linked.
+See `docs/pfp-kit-architecture.md` for upload normalization, direct manipulation, and export details.
 
 ## Artwork pipeline
 
@@ -71,11 +70,11 @@ kit, NVIDIA (svgl), X and Discord (Simple Icons).
 | --- | --- | --- | --- |
 | Dot Transition | hyperiux | Loader (Hyperliquid mark → CPU silhouette) | Play-once mode gated on real asset readiness; session-only; skipped for reduced motion. |
 | Immersive Full Screen Navigation | hyperiux | Navbar + menu | Dark header, `inert` closed panel, context API, interruptible toggle. |
-| Halftone Dots · LED screen | paper-design (Paper Shaders, Apache-2.0) | Hero environment | Recipe as props, CPU palette, cursor ripple on fine pointers only, still frame for reduced motion. |
+| Halftone Dots · LED screen | paper-design (Paper Shaders, Apache-2.0) | Global site environment | One persistent CPU recipe, cursor ripple on fine pointers only, still frame for reduced motion. |
 | Variable Text Proximity | hyperiux | Lore statement | Self-hosted Roboto Flex, runs only in view. |
 | Sticky Content Wrapper | hyperiux | Lore story | Snap removed, per-step dwell, screen-reader copy. |
 | Amount Slider | serafimcloud | Compute position, Engine zoom | Stop-index (log) mapping, formatted rolling readout. |
-| Segmented Control | ddoemonn | Engine options | CSS spring instead of motion/react; swatch leads. |
+| Segmented Control | ddoemonn | Engine background/effect options | CSS spring instead of motion/react; swatch leads. |
 | Formation | uicapsule (kyh/uicapsule, MIT) | Gallery | Vertical wheel left to the page, keyboard browse, tap-to-open lightbox. |
 | Balance Chart | ssychui | Market chart | Real candles on a time axis, loading/error/empty states. |
 | Tangle Footer | radiumcoders | Footer | CSS entrance instead of motion/react; copy fitted per ring for a seamless loop. |

@@ -5,36 +5,11 @@ import { ArrowUpRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { NvidiaWordmark } from "@/components/brand/marks";
 import { ContractCopy } from "@/components/contract-copy";
-import { ShaderBackground, type HalftoneRecipe } from "@/components/ui/halftone-dots-led-screen";
 import { useFinePointer, useReducedMotion } from "@/hooks/use-media";
 import { links, network, pool, site } from "@/lib/config";
 import { pct, price } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useMarket } from "@/features/data/market-context";
-
-/** Halftone recipe tuned to x-banner: green-black field, mint dot waves. */
-const CPU_HALFTONE: HalftoneRecipe = {
-  // Low noise falls to the field colour, so dots only light up inside the
-  // wave bands — the banner's black gaps between luminous halftone shapes.
-  colors: ["#020c0a", "#020c0a", "#031a15", "#0d5a44", "#3fcf9c", "#97fce4"],
-  scale: 1.7,
-  intensity: 0.86,
-  paramA: 0.78,
-  warp: 0.55,
-  detail: 1.1,
-  contrast: 1.12,
-  brightness: -0.01,
-  saturation: 1.05,
-  vignette: 0.32,
-  grain: 0.016,
-  seed: 3,
-  rotate: 0.52,
-  drift: 0.08,
-  timeScale: 0.42,
-  cursorEffect: 3,
-  cursorStrength: 0.8,
-  cursorRadius: 0.32,
-};
 
 function LivePrice() {
   const { status, data, stale } = useMarket();
@@ -100,11 +75,8 @@ export function Hero() {
       id="top"
       tabIndex={-1}
       aria-labelledby="hero-title"
-      className="relative isolate h-svh min-h-[40rem] overflow-hidden bg-cpu-black outline-none"
+      className="relative isolate h-svh min-h-[40rem] overflow-hidden"
     >
-      <div className="absolute inset-0 -z-10">
-        <ShaderBackground recipe={CPU_HALFTONE} cursor={fine} still={reduced} />
-      </div>
       {/* Tonal pools: a dark stage behind the cat, and a floor fade into the page. */}
       <div
         aria-hidden="true"
@@ -127,6 +99,7 @@ export function Hero() {
         style={{ aspectRatio: "1431 / 1800", perspective: "1200px" }}
       >
         <div ref={figureRef} className="relative h-full w-full will-change-transform">
+          <span data-hero-visor-target className="absolute left-[25%] top-[5%] h-[24%] w-[50%]" aria-hidden="true" />
           <Image
             src="/art/character/hero.webp"
             alt="CPU, the Hyperliquid cat, standing in a black-and-white tactical exosuit with a teal-lit Hyperliquid visor"

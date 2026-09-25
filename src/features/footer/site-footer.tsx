@@ -21,7 +21,7 @@ const LINKS = [
 
 export function SiteFooter() {
   return (
-    <footer className="relative overflow-hidden bg-ink-1" aria-labelledby="footer-title">
+    <footer id="footer" className="relative overflow-hidden" aria-labelledby="footer-title">
       <TangleFooter lines={RIBBONS} seed={31}>
         <div className="relative h-full w-full">
           <Image

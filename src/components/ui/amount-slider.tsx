@@ -265,7 +265,7 @@ export function AmountSlider({
           key={index}
           aria-label={ariaLabel}
           aria-valuetext={ariaValueText}
-          className="block h-10 w-6 shrink-0 cursor-grab rounded-lg bg-foreground shadow-md ring-ring/40 transition-shadow duration-300 ease-out outline-none hover:ring-2 focus-visible:ring-2 active:cursor-grabbing disabled:pointer-events-none"
+          className="block h-10 w-6 shrink-0 cursor-grab rounded-lg bg-foreground shadow-md ring-ring/40 transition-shadow duration-300 ease-out outline-none hover:ring-2 focus-visible:ring-2 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
         />
       ))}
     </SliderPrimitive.Root>

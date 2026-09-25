@@ -8,6 +8,7 @@
 import gsap from "gsap";
 import type { ReactNode, RefObject } from "react";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lockScroll, unlockScroll } from "@/lib/scroll-lock";
 
 /** Open state + close() for anything rendered in the header or panel. */
 interface NavApi {
@@ -227,7 +228,9 @@ export function FullscreenNav({
       timelineRef.current = timeline;
       timeline
         .to(linksWrapperRef.current, { scale: 0.94, opacity: 0.5, duration: 0.6, ease: "power2.in" })
-        .to(overlayRef.current, { clipPath: closedFinal, duration: closeDuration * 0.8, ease }, "<");
+        .to(overlayRef.current, { clipPath: closedFinal, duration: closeDuration * 0.8, ease }, "<")
+        // Fully closed: out of hit-testing and paint, not just clipped.
+        .set(overlayRef.current, { visibility: "hidden" });
       // Hand navigation back to the page as the panel starts to lift.
       if (after) window.setTimeout(after, 60);
     },
@@ -241,14 +244,12 @@ export function FullscreenNav({
     else onOpenMenu();
   };
 
-  // Lock page scroll only while open, so other owners (the intro) keep theirs.
+  // Lock page scroll only while open; releases on close and on unmount, and
+  // only the nav's own lock, so other owners (the intro) keep theirs.
   useEffect(() => {
     if (!isOpen) return;
-    const html = document.documentElement;
-    html.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = "";
-    };
+    lockScroll("nav");
+    return () => unlockScroll("nav");
   }, [isOpen]);
 
   useEffect(() => () => void timelineRef.current?.kill(), []);
@@ -286,19 +287,19 @@ export function FullscreenNav({
         >
           <span
             style={{ backgroundColor: bar }}
-            className={`block h-0.5 w-full transition-all duration-700 ease-in-out motion-reduce:transition-none ${
+            className={`block h-0.5 w-full transition-transform duration-300 ease-in-out motion-reduce:transition-none ${
               isOpen ? "translate-y-2 rotate-45" : ""
             }`}
           />
           <span
             style={{ backgroundColor: bar }}
-            className={`block h-0.5 w-full transition-all duration-500 motion-reduce:transition-none ${
+            className={`block h-0.5 w-full transition-[opacity,transform] duration-300 motion-reduce:transition-none ${
               isOpen ? "scale-x-0 opacity-0" : ""
             }`}
           />
           <span
             style={{ backgroundColor: bar }}
-            className={`block h-0.5 w-full transition-all duration-700 ease-in-out motion-reduce:transition-none ${
+            className={`block h-0.5 w-full transition-transform duration-300 ease-in-out motion-reduce:transition-none ${
               isOpen ? "-translate-y-2 -rotate-45" : ""
             }`}
           />
@@ -308,7 +309,7 @@ export function FullscreenNav({
       <nav
         id="site-menu"
         ref={overlayRef}
-        style={{ clipPath: closedInitial, backgroundColor: overlayBg }}
+        style={{ clipPath: closedInitial, visibility: "hidden", backgroundColor: overlayBg }}
         className={`fixed inset-0 z-60 flex flex-col overflow-y-auto overscroll-contain ${
           isOpen ? "pointer-events-auto" : "pointer-events-none"
         }`}

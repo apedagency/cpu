@@ -1,0 +1,358 @@
+{
+  "version": 1,
+  "project": {
+    "name": "cat-purrcessing-unit",
+    "productType": null,
+    "stack": [
+      "nextjs",
+      "react",
+      "shadcn",
+      "tailwind-v4"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "src/app/globals.css"
+    ],
+    "components": [
+      "src/components/ui"
+    ],
+    "assets": [
+      "public/brand",
+      "assets"
+    ],
+    "instructions": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ]
+  },
+  "design": {
+    "colorMode": "dark",
+    "colors": {
+      "--cpu-muted": {
+        "value": "#9fb5ae",
+        "source": "src/app/globals.css"
+      },
+      "--background": {
+        "value": "var(--cpu-black)",
+        "source": "src/app/globals.css"
+      },
+      "--foreground": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--card-foreground": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--popover-foreground": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--primary": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--primary-foreground": {
+        "value": "var(--cpu-ink-1)",
+        "source": "src/app/globals.css"
+      },
+      "--secondary": {
+        "value": "var(--cpu-ink-3)",
+        "source": "src/app/globals.css"
+      },
+      "--secondary-foreground": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--muted": {
+        "value": "#0a2621",
+        "source": "src/app/globals.css"
+      },
+      "--muted-foreground": {
+        "value": "var(--cpu-muted)",
+        "source": "src/app/globals.css"
+      },
+      "--accent": {
+        "value": "var(--cpu-mint)",
+        "source": "src/app/globals.css"
+      },
+      "--accent-foreground": {
+        "value": "var(--cpu-ink-1)",
+        "source": "src/app/globals.css"
+      },
+      "--border": {
+        "value": "rgb(151 252 228 / 0.13)",
+        "source": "src/app/globals.css"
+      },
+      "--ring": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--chart-1": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--chart-2": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--chart-down": {
+        "value": "var(--cpu-fog)",
+        "source": "src/app/globals.css"
+      },
+      "--color-background": {
+        "value": "var(--background)",
+        "source": "src/app/globals.css"
+      },
+      "--color-foreground": {
+        "value": "var(--foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-card": {
+        "value": "var(--card)",
+        "source": "src/app/globals.css"
+      },
+      "--color-card-foreground": {
+        "value": "var(--card-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-popover": {
+        "value": "var(--popover)",
+        "source": "src/app/globals.css"
+      },
+      "--color-popover-foreground": {
+        "value": "var(--popover-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-primary": {
+        "value": "var(--primary)",
+        "source": "src/app/globals.css"
+      },
+      "--color-primary-foreground": {
+        "value": "var(--primary-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-secondary": {
+        "value": "var(--secondary)",
+        "source": "src/app/globals.css"
+      },
+      "--color-secondary-foreground": {
+        "value": "var(--secondary-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-muted": {
+        "value": "var(--muted)",
+        "source": "src/app/globals.css"
+      },
+      "--color-muted-foreground": {
+        "value": "var(--muted-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-accent": {
+        "value": "var(--accent)",
+        "source": "src/app/globals.css"
+      },
+      "--color-accent-foreground": {
+        "value": "var(--accent-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-border": {
+        "value": "var(--border)",
+        "source": "src/app/globals.css"
+      },
+      "--color-input": {
+        "value": "var(--input)",
+        "source": "src/app/globals.css"
+      },
+      "--color-ring": {
+        "value": "var(--ring)",
+        "source": "src/app/globals.css"
+      },
+      "--color-chart-1": {
+        "value": "var(--chart-1)",
+        "source": "src/app/globals.css"
+      },
+      "--color-chart-2": {
+        "value": "var(--chart-2)",
+        "source": "src/app/globals.css"
+      },
+      "--color-cpu-black": {
+        "value": "var(--cpu-black)",
+        "source": "src/app/globals.css"
+      },
+      "--color-ink-1": {
+        "value": "var(--cpu-ink-1)",
+        "source": "src/app/globals.css"
+      },
+      "--color-ink-2": {
+        "value": "var(--cpu-ink-2)",
+        "source": "src/app/globals.css"
+      },
+      "--color-ink-3": {
+        "value": "var(--cpu-ink-3)",
+        "source": "src/app/globals.css"
+      },
+      "--color-visor": {
+        "value": "var(--cpu-visor)",
+        "source": "src/app/globals.css"
+      },
+      "--color-forest": {
+        "value": "var(--cpu-forest)",
+        "source": "src/app/globals.css"
+      },
+      "--color-graphite": {
+        "value": "var(--cpu-graphite)",
+        "source": "src/app/globals.css"
+      },
+      "--color-teal": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--color-mint": {
+        "value": "var(--cpu-mint)",
+        "source": "src/app/globals.css"
+      },
+      "--color-paper": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--color-fog": {
+        "value": "var(--cpu-fog)",
+        "source": "src/app/globals.css"
+      }
+    },
+    "typography": {
+      "--font-sans": {
+        "value": "var(--font-flex), ui-sans-serif, system-ui, sans-serif",
+        "source": "src/app/globals.css"
+      },
+      "--font-mono": {
+        "value": "var(--font-mono-face), ui-monospace, SFMono-Regular, Menlo, monospace",
+        "source": "src/app/globals.css"
+      }
+    },
+    "spacing": {
+      "--gutter": {
+        "value": "clamp(1rem, 4vw, 3.5rem)",
+        "source": "src/app/globals.css"
+      }
+    },
+    "radius": {
+      "--radius": {
+        "value": "0.5rem",
+        "source": "src/app/globals.css"
+      },
+      "--radius-sm": {
+        "value": "calc(var(--radius) * 0.6)",
+        "source": "src/app/globals.css"
+      },
+      "--radius-md": {
+        "value": "calc(var(--radius) * 0.8)",
+        "source": "src/app/globals.css"
+      },
+      "--radius-lg": {
+        "value": "var(--radius)",
+        "source": "src/app/globals.css"
+      },
+      "--radius-xl": {
+        "value": "calc(var(--radius) * 1.4)",
+        "source": "src/app/globals.css"
+      }
+    },
+    "shadows": {},
+    "motion": {
+      "--ease-out-expo": {
+        "value": "var(--ease-out-expo)",
+        "source": "src/app/globals.css"
+      },
+      "--ease-in-out-quart": {
+        "value": "var(--ease-in-out-quart)",
+        "source": "src/app/globals.css"
+      }
+    },
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [
+      "amount-slider",
+      "balance-chart",
+      "dot-transition",
+      "formation",
+      "formation-utils",
+      "halftone-dots-led-screen",
+      "immersive-full-screen-nav",
+      "segmented-control",
+      "sticky-content-wrapper",
+      "tangle-footer",
+      "variable-text-proximity"
+    ],
+    "preferredPrimitives": [
+      "radix-ui"
+    ],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [
+      "Preserve the CPU black, green, teal, mint, white, glass, and halftone visual language",
+      "Use one continuous page-level environment behind mostly transparent sections",
+      "Keep real market and reward logic unchanged",
+      "Keep uploaded PFP images local to the browser"
+    ],
+    "avoid": [
+      "Purple or rainbow gradients",
+      "Generic SaaS cards, pill navigation, fake terminals, and decorative particles",
+      "Multiple always-running WebGL canvases",
+      "New generated CPU character artwork"
+    ]
+  },
+  "decisions": [
+    {
+      "choice": "Promote the existing raw WebGL halftone into one fixed SiteEnvironment and make section roots transparent.",
+      "reason": "The banner/hero atmosphere is the strongest existing visual and solves section fragmentation without changing brand identity."
+    },
+    {
+      "choice": "Render the PFP kit with SVG assets composed by Canvas 2D; do not add Three.js.",
+      "reason": "SVG and Canvas provide exact preview/export parity, transparent glass, and independent transforms at substantially lower runtime cost."
+    }
+  ],
+  "evidence": [
+    {
+      "fact": "components.installed",
+      "source": "src/components/ui"
+    },
+    {
+      "fact": "design.colorMode:light",
+      "source": "src/app/globals.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "src/app/globals.css"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "AGENTS.md"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "CLAUDE.md"
+    },
+    {
+      "fact": "project.stack:nextjs",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:shadcn",
+      "source": "components.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-09-25T18:19:46.755Z"
+}
