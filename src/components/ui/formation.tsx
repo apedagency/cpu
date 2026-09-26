@@ -16,6 +16,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import Image from "next/image";
+import { useReducedMotion } from "@/hooks/use-media";
 
 import type { FmLayout, FormationMode, Pose, Work } from "./formation-utils/formation-poses";
 import {
@@ -125,6 +126,7 @@ interface FormationProps {
 
 export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }: FormationProps): ReactNode => {
   const [mode, setMode] = useState<FormationMode>("flat");
+  const reduced = useReducedMotion();
 
   const rootRef = useRef<HTMLElement | null>(null);
   const parallaxRef = useRef<HTMLDivElement | null>(null);
@@ -326,7 +328,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
     const root = rootRef.current;
     if (!root) return;
     const st = S;
-    st.reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    st.reduced = reduced;
     const box = boxRef.current;
 
     const measure = () => {
@@ -527,7 +529,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
       box.h = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- engine closes over refs by design
-  }, [cards, n, S]);
+  }, [cards, n, reduced, S]);
 
   useEffect(() => {
     const inners = cards.map((c) => c.inner).filter((el): el is HTMLDivElement => el !== null);
@@ -564,7 +566,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
       io.disconnect();
       tween?.kill();
     };
-  }, [cards, S]);
+  }, [cards, reduced, S]);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -617,7 +619,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
               role="img"
               aria-label={card.work.alt}
               className="absolute left-1/2 top-1/2"
-              style={{ opacity: 0, transformStyle: "preserve-3d" }}
+              style={{ opacity: 1, transformStyle: "preserve-3d" }}
             >
               <div
                 ref={(el) => {
@@ -627,7 +629,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
                 style={{
                   borderRadius: 10,
                   boxShadow: "0 16px 40px -16px rgba(0,0,0,0.7), 0 0 0 1px rgba(151,252,228,0.10)",
-                  opacity: 0,
+                  opacity: 1,
                   background: "radial-gradient(90% 70% at 50% 30%, #0b3a33 0%, #042826 55%, #031613 100%)",
                 }}
               >
@@ -640,7 +642,8 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
                     alt=""
                     fill
                     loading="lazy"
-                    sizes="(max-width: 640px) 40vw, 220px"
+                    // Largest a card gets: ~110 px (Arc) on phones, ~280 px (Orbit front) on desktop.
+                    sizes="(max-width: 639px) 112px, 280px"
                     className={card.work.fit === "contain" ? "object-contain p-[7%]" : "object-cover"}
                     style={{ objectPosition: card.work.objectPosition ?? (card.work.fit === "contain" ? "center 60%" : "center") }}
                   />
@@ -652,7 +655,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-5 sm:inset-x-auto sm:right-0 sm:justify-end sm:pr-(--gutter)">
-        <div role="radiogroup" aria-label="Formation" data-fm-ui className="pointer-events-auto flex gap-5">
+        <div role="radiogroup" aria-label="Formation" data-fm-ui className="pointer-events-auto flex gap-0.5">
           {MODES.map((m) => {
             const active = mode === m.id;
             return (
@@ -662,7 +665,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
                 type="button"
                 aria-checked={active}
                 onClick={() => setMode(m.id)}
-                className={`relative min-h-11 text-[0.6875rem] font-semibold uppercase tracking-[0.16em] transition-colors after:absolute after:inset-x-0 after:bottom-2 after:h-0.5 after:origin-left after:bg-teal after:transition-transform after:duration-500 ${
+                className={`relative min-h-11 min-w-11 px-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.16em] transition-colors after:absolute after:inset-x-2.5 after:bottom-2 after:h-0.5 after:origin-left after:bg-teal after:transition-transform after:duration-500 ${
                   active ? "text-paper after:scale-x-100" : "text-paper/40 after:scale-x-0 hover:text-paper/80"
                 }`}
               >

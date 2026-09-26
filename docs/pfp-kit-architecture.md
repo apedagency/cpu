@@ -13,7 +13,7 @@ armour and colour only.
 Every wearable was generated with the Higgsfield connector, conditioned on the
 official references (`assets/cpu-character.png` panels, `public/art/gallery/face-*`,
 `public/art/character/bust.webp`, the turnaround views and suit close-ups).
-`public/pfp-kit/source/manifest.json` records every candidate: model, job id and
+`assets/pfp-kit/source/manifest.json` records every candidate: model, job id and
 verdict.
 
 | Asset | Candidates | Selected | Model |
@@ -63,15 +63,24 @@ folder, `rejected/`, `selected/`, and the processing scripts.
 
 ## Files
 
+Only the runtime layers are served; the masters are kept in the repo but out of
+`public/`, so they never deploy.
+
 ```
-public/pfp-kit/
-  visor/     visor-main.{png,webp} visor-glass-base visor-rim visor-reflection
-             visor-highlight visor-glow-mask   (.png masters, .webp runtime @1400)
-  body/      body-{front,right-34,left-34,right,left}.{png @2560, webp @2048}
-             body-{right,left}-back.{png,webp}   (inner back, under the PFP)
-  effects/   glass-reflection-soft mint-rim-light visor-shadow (.png/.webp, half-res)
-  previews/  body-*.webp (angle thumbnails), visor.webp
-  source/    *-higgsfield.webp (selected masters) + manifest.json
+public/pfp-kit/                 runtime (loaded by manifest.ts)
+  visor/     visor-glass-base visor-rim visor-reflection visor-highlight
+             visor-glow-mask                        (.webp @1400)
+  body/      body-{front,right-34,left-34,right,left}.webp @2048
+             body-{right,left}-back.webp            (inner back, under the PFP)
+  effects/   glass-reflection-soft mint-rim-light visor-shadow (.webp, half-res)
+  previews/  body-*.webp (angle thumbnails)
+
+assets/pfp-kit/                 masters (not served)
+  visor/     visor-main.{png,webp} + every visor layer as .png @3042
+  body/      body-*.png @2560 (+ -back)
+  effects/   .png
+  previews/  visor.webp
+  source/    *-higgsfield.webp (selected generations) + manifest.json
 ```
 
 ## Geometry (`manifest.ts`)

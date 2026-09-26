@@ -4,6 +4,9 @@ import type { PfpState, Transform } from "./state";
 
 export type UserImage = HTMLCanvasElement;
 
+/** A decoded kit layer: an ImageBitmap where supported, so drawing never decodes on the main thread. */
+export type KitImage = ImageBitmap | HTMLImageElement;
+
 interface AlphaMask {
   data: Uint8ClampedArray;
   w: number;
@@ -11,16 +14,16 @@ interface AlphaMask {
 }
 
 export interface Kit {
-  visor: Record<VisorAsset, HTMLImageElement>;
+  visor: Record<VisorAsset, KitImage>;
   /** Glass silhouette filled with the multiply colour (built once). */
   multiply: HTMLCanvasElement;
   mask: AlphaMask;
 }
 
 export interface LoadedBody {
-  image: HTMLImageElement;
+  image: KitImage;
   /** Inner back of turned angles, drawn under the PFP. */
-  back: HTMLImageElement | null;
+  back: KitImage | null;
   mask: AlphaMask;
 }
 
@@ -205,20 +208,32 @@ export function drawPfp(
 /* Loading                                                             */
 /* ------------------------------------------------------------------ */
 
-function loadImage(src: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Could not load ${src}`));
-    img.src = src;
-  });
+const sizeOf = (img: KitImage) =>
+  img instanceof HTMLImageElement ? { w: img.naturalWidth, h: img.naturalHeight } : { w: img.width, h: img.height };
+
+/**
+ * Resolves with decoded pixels. Canvas draws of an <img> re-decode on the main
+ * thread even after img.decode() (a 70–360 ms stall on the first paint), so the
+ * layers become ImageBitmaps, decoded off-thread once.
+ */
+async function loadImage(src: string): Promise<KitImage> {
+  const img = new Image();
+  img.decoding = "async";
+  img.src = src;
+  try {
+    await img.decode();
+  } catch {
+    throw new Error(`Could not load ${src}`);
+  }
+  if (typeof createImageBitmap !== "function") return img;
+  return createImageBitmap(img).catch(() => img);
 }
 
-function alphaMask(img: HTMLImageElement): AlphaMask {
-  const scale = Math.min(1, 256 / Math.max(img.naturalWidth, img.naturalHeight));
-  const w = Math.max(1, Math.round(img.naturalWidth * scale));
-  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+function alphaMask(img: KitImage): AlphaMask {
+  const size = sizeOf(img);
+  const scale = Math.min(1, 256 / Math.max(size.w, size.h));
+  const w = Math.max(1, Math.round(size.w * scale));
+  const h = Math.max(1, Math.round(size.h * scale));
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
@@ -234,12 +249,13 @@ export async function loadKit(): Promise<Kit> {
   const entries = await Promise.all(
     (Object.entries(VISOR_SRC) as [VisorAsset, string][]).map(async ([key, src]) => [key, await loadImage(src)] as const),
   );
-  const visor = Object.fromEntries(entries) as Record<VisorAsset, HTMLImageElement>;
+  const visor = Object.fromEntries(entries) as Record<VisorAsset, KitImage>;
 
   const base = visor.base;
   const multiply = document.createElement("canvas");
-  multiply.width = base.naturalWidth;
-  multiply.height = base.naturalHeight;
+  const baseSize = sizeOf(base);
+  multiply.width = baseSize.w;
+  multiply.height = baseSize.h;
   const mctx = multiply.getContext("2d")!;
   mctx.drawImage(base, 0, 0);
   mctx.globalCompositeOperation = "source-in";

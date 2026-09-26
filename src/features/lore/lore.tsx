@@ -17,7 +17,7 @@ const STEPS: RevealStep[] = [
         <p>A HyperEVM token, launched on {pool.launchpad}.</p>
       </>
     ),
-    image: "/art/campaign/06-the-cat.webp",
+    image: "/art/campaign/square/06-the-cat.webp",
     alt: "CPU standing alone in a vast dark chamber with a mint-lit reflective floor",
     focus: "38% 62%",
     zoom: 1.04,
@@ -33,7 +33,7 @@ const STEPS: RevealStep[] = [
         </p>
       </>
     ),
-    image: "/art/campaign/08-the-pair.webp",
+    image: "/art/campaign/square/08-the-pair.webp",
     alt: "CPU between a monumental Hyperliquid glass form and a suspended processor",
     focus: "50% 56%",
   },
@@ -51,7 +51,7 @@ const STEPS: RevealStep[] = [
         </p>
       </>
     ),
-    image: "/art/campaign/09-the-flow.webp",
+    image: "/art/campaign/square/09-the-flow.webp",
     alt: "CPU beside luminous mint particles flowing through transparent glass channels",
     focus: "58% 50%",
   },

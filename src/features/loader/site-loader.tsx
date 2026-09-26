@@ -23,6 +23,12 @@ const EXIT_SLACK_MS = 500;
 const FADE_MS = 500;
 /** Reduced motion: the static mark's CSS fade (globals.css) is over by then. */
 const REDUCED_MS = 1000;
+/**
+ * Hydrating later than this (slow network) means the visitor has already
+ * waited on the overlay: skip the sequence. Before it, the client claims the
+ * overlay and cancels the CSS fallback fade (globals.css, 5 s).
+ */
+const LATE_MS = 2500;
 
 /** Dot grid geometry, shared by DotTransition and the portal frame. */
 const SPACING = 13;
@@ -171,6 +177,12 @@ export function SiteLoader() {
     };
   }, [phase, exit]);
 
+  // Claim the server-rendered overlay in time, or leave its CSS fallback running.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (root && readIntro() === "run" && performance.now() < LATE_MS) root.dataset.live = "";
+  }, []);
+
   // Running: hold the scroll lock, wait for assets, listen for skips.
   useEffect(() => {
     // `intro` is the server snapshot ("run") during hydration, so also read
@@ -185,6 +197,12 @@ export function SiteLoader() {
         setPhase("done");
       }, REDUCED_MS);
       return () => window.clearTimeout(t);
+    }
+
+    // Late hydration: never lock, go straight to the exit.
+    if (!rootRef.current?.hasAttribute("data-live")) {
+      skip();
+      return;
     }
 
     lockScroll("loader");

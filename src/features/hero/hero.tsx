@@ -13,7 +13,7 @@ function LivePrice() {
   const { status, data, stale } = useMarket();
   const change = data?.change.h24 ?? null;
   return (
-    <div className="flex items-baseline gap-3" aria-live="polite">
+    <div className="flex items-baseline gap-3">
       {status === "loading" ? (
         <span className="skeleton inline-block h-7 w-28 rounded" aria-label="Loading price" />
       ) : status === "error" ? (

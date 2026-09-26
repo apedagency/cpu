@@ -14,7 +14,7 @@ const SOCIALS = [
   { label: "X", href: links.x, icon: <XIcon className="size-5" /> },
   { label: "Dexscreener", href: links.dexscreener, icon: null },
   { label: "Discord", href: links.discord, icon: <DiscordIcon className="size-5" /> },
-];
+].filter((s): s is typeof s & { href: string } => s.href !== null);
 
 function useScrollState() {
   const [scrolled, setScrolled] = useState(false);
@@ -63,6 +63,10 @@ function Panel() {
   const { isOpen, close } = useNavState();
   const rootRef = useRef<HTMLDivElement>(null);
   useStaggerReveal(isOpen, rootRef, 0.95);
+  // The closed panel is fixed over the viewport, so lazy images would load on
+  // first paint. Mount the portraits on first open; they land under the wipe.
+  const [opened, setOpened] = useState(false);
+  if (isOpen && !opened) setOpened(true);
 
   return (
     <div ref={rootRef} className="flex min-h-dvh w-full flex-col justify-between gap-10 px-(--gutter) pb-8 pt-24 text-paper md:pt-28">
@@ -103,7 +107,7 @@ function Panel() {
               data-reveal="media"
               className="relative h-[clamp(9rem,20vw,17rem)] w-[clamp(7rem,15vw,13rem)] overflow-hidden rounded-md bg-[radial-gradient(80%_70%_at_50%_35%,#0b3a33,#031613)] opacity-0 max-[1025px]:h-40 max-[1025px]:flex-1"
             >
-              <Image src={m.src} alt={m.alt} fill sizes="(max-width: 1025px) 45vw, 15vw" className="object-contain object-bottom p-2" />
+              {opened && <Image src={m.src} alt={m.alt} fill sizes="(max-width: 1025px) 45vw, 15vw" className="object-contain object-bottom p-2" />}
             </div>
           ))}
         </div>

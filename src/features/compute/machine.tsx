@@ -125,8 +125,9 @@ export function Machine({ live }: { live: Live<RewardSnapshot> }) {
       </div>
 
       {/* The live stream: the one thing on this page that moves by itself. */}
-      <div className="min-w-0 lg:pb-2" aria-live="polite">
-        <p className="flex items-center gap-2 text-sm text-paper/60">
+      <div className="min-w-0 lg:pb-2">
+        {/* Only the state change is announced; the countdown ticks every second. */}
+        <p className="flex items-center gap-2 text-sm text-paper/60" aria-live="polite">
           <span className={cn("relative size-2 rounded-full", streaming ? "bg-teal" : "bg-paper/25")} aria-hidden="true">
             {streaming && <span className="absolute inset-0 animate-ping rounded-full bg-teal/70" />}
           </span>

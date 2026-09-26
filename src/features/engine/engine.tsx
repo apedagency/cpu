@@ -28,6 +28,8 @@ import { clean, freshState, LIMITS, resetLayer, type PfpState, type Transform } 
 const deg = (rad: number) => (rad * 180) / Math.PI;
 /** Preview backing-store cap; export always renders at EXPORT_SIZE. */
 const PREVIEW_MAX = 1400;
+/** How long after an edit a touch on the selected PFP still drags it rather than scrolling. */
+const PFP_TOUCH_MS = 6000;
 
 async function decodeUpload(file: File): Promise<UserImage> {
   let source: ImageBitmap | HTMLImageElement | null = null;
@@ -200,6 +202,8 @@ export function Engine() {
   const [kit, setKit] = useState<Kit | null>(null);
   const [bodies, setBodies] = useState<Bodies>({});
   const [kitError, setKitError] = useState(false);
+  /** The section is close enough that the kit is loading (the skeleton only shimmers from then on). */
+  const [near, setNear] = useState(false);
   const [image, setImage] = useState<UserImage | null>(null);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
@@ -228,6 +232,12 @@ export function Engine() {
   const dragRef = useRef<Drag | null>(null);
   const pinchRef = useRef<Pinch | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
+  /** Touch: whether the current gesture edits (true) or may scroll the page (false). */
+  const touchClaim = useRef(false);
+  /** Touch on the unselected PFP: a tap without travel selects it. */
+  const tapRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  /** Last edit time; the selected PFP answers touch drags for PFP_TOUCH_MS after it. */
+  const lastEdit = useRef(0);
   const pending = useRef<{ id: LayerId; t: Transform } | null>(null);
   const frame = useRef(0);
   /** Entrance: 0 → 1 as the kit assembles in the empty stage. */
@@ -253,6 +263,7 @@ export function Engine() {
       ([entry]) => {
         if (!entry?.isIntersecting) return;
         io.disconnect();
+        setNear(true);
         Promise.all([loadKit(), ensureBody(DEFAULTS.angle)])
           .then(([k]) => alive && setKit(k))
           .catch(() => alive && setKitError(true));
@@ -393,6 +404,7 @@ export function Engine() {
   }, [image, reduced]);
 
   const commit = useCallback((id: LayerId, t: Transform) => {
+    lastEdit.current = performance.now();
     setState((prev) => ({ ...prev, transforms: { ...prev.transforms, [id]: clean(id, t) } }));
   }, []);
 
@@ -446,12 +458,28 @@ export function Engine() {
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest("[data-stage-ui]")) return;
     if (!image || !kit) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const s = stateRef.current;
+    const handle = (e.target as HTMLElement).closest("[data-handle]");
+    const p = toCanvas(e.clientX, e.clientY);
+    const layer = handle ? s.selected : hitTest(kit, bodiesRef.current, s, p.size, image, p.x, p.y) ?? "userPfp";
+
+    // A finger on the photo scrolls the page unless the PFP is the layer being
+    // edited; a tap selects it. Glasses, armour, handle and pinches always edit.
+    if (e.pointerType === "touch" && pointers.current.size === 1 && !handle && layer === "userPfp") {
+      const editingPfp = s.selected === "userPfp" && performance.now() - lastEdit.current < PFP_TOUCH_MS;
+      if (!editingPfp) {
+        touchClaim.current = false;
+        tapRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+        return;
+      }
+    }
+    touchClaim.current = true;
+    tapRef.current = null;
     e.preventDefault(); // no text selection while dragging the image
     e.currentTarget.setPointerCapture(e.pointerId);
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     setInteracting(true);
     setEngaged(true);
-    const s = stateRef.current;
 
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
@@ -467,9 +495,6 @@ export function Engine() {
       return;
     }
 
-    const handle = (e.target as HTMLElement).closest("[data-handle]");
-    const p = toCanvas(e.clientX, e.clientY);
-    const layer = handle ? s.selected : hitTest(kit, bodiesRef.current, s, p.size, image, p.x, p.y) ?? "userPfp";
     if (layer !== s.selected) setState((prev) => ({ ...prev, selected: layer }));
     const pivot = pivotFor(s, layer, p.size, image);
     const k = p.rect.width / p.size;
@@ -519,6 +544,15 @@ export function Engine() {
 
   const endPointer = (e: ReactPointerEvent<HTMLDivElement>) => {
     pointers.current.delete(e.pointerId);
+    const tap = tapRef.current;
+    if (tap?.id === e.pointerId) {
+      tapRef.current = null;
+      if (e.type === "pointerup" && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10) {
+        lastEdit.current = performance.now();
+        setEngaged(true);
+        setState((prev) => ({ ...prev, selected: "userPfp" }));
+      }
+    }
     if (dragRef.current?.pointer === e.pointerId) dragRef.current = null;
     if (pointers.current.size < 2) pinchRef.current = null;
     if (pointers.current.size === 0) setInteracting(false);
@@ -539,6 +573,33 @@ export function Engine() {
     stage.addEventListener("wheel", onWheel, { passive: false });
     return () => stage.removeEventListener("wheel", onWheel);
   }, [image, commit]);
+
+  // Touch: pointerdown (which fires first) decides whether this gesture edits;
+  // touch-action can't express "scroll unless the finger is on the glasses", so
+  // an editing touch cancels the browser's pan here instead.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || !image) return;
+    const onStart = (e: TouchEvent) => {
+      if (touchClaim.current || e.touches.length > 1) e.preventDefault();
+    };
+    const onMove = (e: TouchEvent) => {
+      if (touchClaim.current && e.cancelable) e.preventDefault();
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) touchClaim.current = false;
+    };
+    stage.addEventListener("touchstart", onStart, { passive: false });
+    stage.addEventListener("touchmove", onMove, { passive: false });
+    stage.addEventListener("touchend", onEnd);
+    stage.addEventListener("touchcancel", onEnd);
+    return () => {
+      stage.removeEventListener("touchstart", onStart);
+      stage.removeEventListener("touchmove", onMove);
+      stage.removeEventListener("touchend", onEnd);
+      stage.removeEventListener("touchcancel", onEnd);
+    };
+  }, [image]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (!image) {
@@ -732,6 +793,17 @@ export function Engine() {
             <br />
             the <span className="text-mint">glass.</span>
           </h2>
+          {/* Desktop only: stacked above the stage it would push the editor below the fold. */}
+          <figure className="relative aspect-square w-full max-w-72 overflow-hidden rounded-md border border-mint/10 bg-ink-1/60 max-lg:hidden">
+            <Image
+              src="/art/campaign/square/22-cpu-glass-object.webp"
+              alt="CPU's curved dark optical visor floating in a black product studio"
+              fill
+              loading="lazy"
+              sizes="288px"
+              className="object-cover"
+            />
+          </figure>
           <ol className="flex flex-col gap-3 text-[0.95rem] text-paper/70 max-lg:hidden">
             {[
               ["01", "Upload your PFP"],
@@ -790,10 +862,12 @@ export function Engine() {
               image ? (interacting ? "cursor-grabbing" : "cursor-grab") : "cursor-pointer",
               dragOver && "shadow-[0_0_0_2px_var(--cpu-teal),0_40px_140px_-30px_rgba(0,240,230,0.55)]",
             )}
-            style={{ touchAction: image ? "none" : "pan-y" }}
+            // Vertical swipes scroll the page; a touch claims the gesture only where
+            // there is something to move (see the touch effect above).
+            style={{ touchAction: "pan-y" }}
           >
             <canvas ref={canvasRef} className="absolute inset-0 size-full" aria-hidden="true" />
-            {!kit && !kitError && <div className="skeleton absolute inset-0" aria-hidden="true" />}
+            {near && !kit && !kitError && <div className="skeleton absolute inset-0" aria-hidden="true" />}
 
             {showFrame && frameCss && handleCss && (
               <>
@@ -862,7 +936,10 @@ export function Engine() {
                 items={items}
                 active={state.selected}
                 open={panelOpen}
-                onSelect={(id) => setState((prev) => ({ ...prev, selected: id as LayerId }))}
+                onSelect={(id) => {
+                  lastEdit.current = performance.now();
+                  setState((prev) => ({ ...prev, selected: id as LayerId }));
+                }}
                 onOpenChange={setPanelOpen}
                 className="w-[min(100vw_-_2rem,30rem)] flex-col-reverse"
                 leading={

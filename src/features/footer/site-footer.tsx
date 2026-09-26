@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import Image from "next/image";
 import { DiscordIcon, XIcon } from "@/components/brand/marks";
 import { ContractCopy } from "@/components/contract-copy";
 import { TextHoverEffect } from "@/components/ui/text-hover-effect";
@@ -9,7 +10,7 @@ const LINKS = [
   { label: "Dexscreener", href: links.dexscreener, icon: null },
   { label: "Signal", href: links.signal, icon: null },
   { label: "Discord", href: links.discord, icon: <DiscordIcon className="size-4" /> },
-];
+].filter((l): l is typeof l & { href: string } => l.href !== null);
 
 /**
  * The close: the launch line, the contract as one big copyable line, links
@@ -17,7 +18,18 @@ const LINKS = [
  */
 export function SiteFooter() {
   return (
-    <footer id="footer" className="relative overflow-hidden" aria-labelledby="footer-title">
+    <footer id="footer" className="relative isolate overflow-hidden" aria-labelledby="footer-title">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-full sm:w-[min(64vw,54rem)] mask-[linear-gradient(90deg,transparent_0%,black_42%,black_100%)]">
+        <Image
+          src="/art/campaign/square/40-final-portrait.webp"
+          alt=""
+          fill
+          loading="lazy"
+          sizes="(max-width: 639px) 100vw, min(64vw, 54rem)"
+          className="object-cover object-center opacity-30"
+        />
+        <div className="absolute inset-0 bg-linear-to-b from-cpu-black/25 via-cpu-black/55 to-cpu-black" />
+      </div>
       <div className="px-(--gutter) pt-[clamp(6rem,12vw,11rem)]">
         <div className="grid gap-x-16 gap-y-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>

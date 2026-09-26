@@ -43,3 +43,9 @@ next-env.d.ts
 
 # local QA scratch (browser profiles, screenshots)
 /tmp/
+
+# local art-generation workspaces (masters, candidates, rejects; hundreds of MB).
+# Served derivatives live in public/, committed masters in assets/.
+/CPU_CONTENT_100/
+/CPU_PFP_GENERATION/
+/CPU_SITE_VISUALS_40/

@@ -11,7 +11,7 @@ type State =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "invalid" }
-  | { kind: "error"; message: string }
+  | { kind: "error" }
   | { kind: "ready"; data: HolderPosition };
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
@@ -42,12 +42,12 @@ export function HolderLookup({ rewards }: { rewards: RewardSnapshot | null }) {
     setState({ kind: "loading" });
     try {
       const res = await fetch(`/api/holder?address=${address}`, { signal: c.signal });
-      const body = (await res.json()) as Envelope<HolderPosition> | { error: string };
+      const body = (await res.json().catch(() => ({ error: `HTTP ${res.status}` }))) as Envelope<HolderPosition> | { error: string };
       if (!res.ok || "error" in body) throw new Error("error" in body ? body.error : `HTTP ${res.status}`);
       setState({ kind: "ready", data: body.data });
-    } catch (err) {
+    } catch {
       if (c.signal.aborted) return;
-      setState({ kind: "error", message: err instanceof Error ? err.message : "Lookup failed" });
+      setState({ kind: "error" });
     }
   };
 
@@ -97,7 +97,7 @@ export function HolderLookup({ rewards }: { rewards: RewardSnapshot | null }) {
         )}
         {state.kind === "error" && (
           <p className="text-sm text-fog" role="alert">
-            The contract read failed ({state.message}). Nothing is shown rather than a guess — try again.
+            The contract read didn&apos;t answer. Nothing is shown rather than a guess — try again in a moment.
           </p>
         )}
         {state.kind === "ready" && (

@@ -63,9 +63,11 @@ export function Market() {
               {pool.venue} pool · priced against {pairedAsset.wrapper.name}
             </span>
           </h2>
-          <div className="mt-3 flex flex-wrap items-baseline gap-x-5" aria-live="polite">
+          <div className="mt-3 flex min-h-[clamp(3rem,7.5vw,6.75rem)] flex-wrap items-baseline gap-x-5">
             {market.status === "loading" ? (
               <span className="skeleton block h-[clamp(3rem,7vw,6rem)] w-72 rounded-xs" />
+            ) : market.status === "error" ? (
+              <span className="self-center text-[clamp(1.25rem,2.2vw,1.75rem)] font-semibold text-paper/70">Price unavailable right now</span>
             ) : (
               <>
                 <span className="tabular text-[clamp(3rem,7.5vw,6.75rem)] font-semibold leading-none tracking-[-0.045em] text-paper">{price(m?.priceUsd)}</span>
@@ -135,7 +137,7 @@ export function Market() {
         <Stat label="Fully diluted" value={usd(m?.fdvUsd ?? null, "compact")} />
         <Stat label="Pool opened" value={m?.pairCreatedAt ? ago(m.pairCreatedAt) : UNAVAILABLE} />
       </dl>
-      <p className="mt-10 text-[0.6875rem] uppercase tracking-[0.14em] text-paper/35" aria-live="polite">
+      <p className="mt-10 text-[0.6875rem] uppercase tracking-[0.14em] text-paper/35">
         {market.status === "error" ? "Unavailable" : market.stale ? "Delayed" : market.fetchedAt ? `Updated ${ago(market.fetchedAt)}` : "Loading"}
       </p>
     </section>

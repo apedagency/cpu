@@ -29,6 +29,12 @@ const WORLD_RECIPE: HalftoneRecipe = {
   cursorRadius: 0.34,
 };
 
+/**
+ * Touch devices run the decorative field lighter: the halftone reads the same
+ * at 1.5× density, and its slow drift needs no more than 30 fps.
+ */
+const TOUCH_BUDGET = { maxDpr: 1.5, pixelBudget: 1_200_000, maxFps: 30 };
+
 type EnvironmentState = {
   shader: number;
   glowX: string;
@@ -97,7 +103,7 @@ export function SiteEnvironment() {
   return (
     <div ref={rootRef} className="site-environment" aria-hidden="true">
       <div className="site-environment__shader">
-        <ShaderBackground recipe={WORLD_RECIPE} cursor={fine} still={reduced} />
+        <ShaderBackground recipe={WORLD_RECIPE} cursor={fine} still={reduced} {...(fine ? null : TOUCH_BUDGET)} />
       </div>
       <div className="site-environment__aurora" />
       <div className="site-environment__glass" />

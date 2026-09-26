@@ -1,7 +1,7 @@
 /**
  * The CPU wearable kit: glasses + armor, generated with Higgsfield from the
  * official character references and processed into transparent layers (see
- * docs/pfp-kit-architecture.md and public/pfp-kit/source/manifest.json).
+ * docs/pfp-kit-architecture.md and assets/pfp-kit/source/manifest.json).
  * There is no head piece — the wearer keeps their own head.
  *
  * Stage coordinates are fractions of the square canvas (0..1).

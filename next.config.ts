@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
       },
       {
         // Artwork is stable per filename; revalidate weekly rather than pin forever.
-        source: "/:dir(art|pfp|brand|hero)/:path*",
+        source: "/:dir(art|pfp-kit|brand|hero|loader)/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
       },
     ];

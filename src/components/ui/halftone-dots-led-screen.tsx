@@ -7,7 +7,8 @@
 //
 // CPU adaptation: the recipe (palette, density, warp, cursor, time scale) is
 // exposed as props; the fragment shader is unchanged. Reduced motion renders
-// a single still frame.
+// a single still frame. Resolution (DPR cap, pixel budget) and frame rate are
+// props too, so touch devices can run the decorative field on a lighter budget.
 
 import { useEffect, useRef } from "react";
 
@@ -306,6 +307,9 @@ export function ShaderBackground({
   recipe = LED_SCREEN_RECIPE,
   cursor = false,
   still = false,
+  maxDpr = 2,
+  pixelBudget = 2_000_000,
+  maxFps = 60,
 }: {
   className?: string;
   recipe?: HalftoneRecipe;
@@ -313,6 +317,12 @@ export function ShaderBackground({
   cursor?: boolean;
   /** Render one frame and stop (reduced motion). */
   still?: boolean;
+  /** Device-pixel-ratio ceiling for the backing store. */
+  maxDpr?: number;
+  /** Most pixels the backing store may hold; larger canvases render scaled down. */
+  pixelBudget?: number;
+  /** Frame-rate ceiling for the time animation. */
+  maxFps?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -391,12 +401,15 @@ export function ShaderBackground({
     let disposed = false;
     const start = performance.now();
     const timeAnimated = Math.abs(timeScale) > 0.0001;
+    // 4 ms of slack so a 30 fps cap lands on every other 60 Hz frame.
+    const frameGap = 1000 / maxFps - 4;
+    let lastDraw = -Infinity;
 
     const resizeCanvas = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
       const rawWidth = Math.max(1, Math.round(bounds.width * dpr));
       const rawHeight = Math.max(1, Math.round(bounds.height * dpr));
-      const pixelScale = Math.min(1, Math.sqrt(2_000_000 / Math.max(1, rawWidth * rawHeight)));
+      const pixelScale = Math.min(1, Math.sqrt(pixelBudget / Math.max(1, rawWidth * rawHeight)));
       const width = Math.max(1, Math.round(rawWidth * pixelScale));
       const height = Math.max(1, Math.round(rawHeight * pixelScale));
       if (el.width !== width || el.height !== height) {
@@ -488,6 +501,11 @@ export function ShaderBackground({
     function render(now: number) {
       raf = 0;
       if (disposed || !visible || !inView) return;
+      if (now - lastDraw < frameGap) {
+        requestRender();
+        return;
+      }
+      lastDraw = now;
       const dt = lastNow === null ? 0 : Math.min((now - lastNow) / 1000, 0.1);
       lastNow = now;
       const follow = 1 - Math.exp(-12 * dt);
@@ -532,7 +550,7 @@ export function ShaderBackground({
       }, 0);
       pendingContextReleases.set(canvas, releaseTimer);
     };
-  }, [recipe, cursor, still]);
+  }, [recipe, cursor, still, maxDpr, pixelBudget, maxFps]);
 
   return (
     <canvas

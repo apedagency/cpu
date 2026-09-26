@@ -1,7 +1,6 @@
 "use client";
 
 import gsap from "gsap";
-import Image from "next/image";
 import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { useMarket } from "@/features/data/market-context";
@@ -49,27 +48,6 @@ export function Compute() {
       </h2>
 
       <Machine live={rewards} />
-
-      <div className="mt-[clamp(3rem,6vw,5rem)] grid gap-3 md:grid-cols-[1.45fr_0.55fr]">
-        <figure className="relative min-h-64 overflow-hidden rounded-md border border-mint/10 bg-ink-1/60 md:min-h-96">
-          <Image
-            src="/art/campaign/20-gpu-liquid-cooling.webp"
-            alt="Mint coolant moving through transparent channels in a black processor assembly"
-            fill
-            sizes="(max-width: 767px) 100vw, 68vw"
-            className="object-cover"
-          />
-        </figure>
-        <figure className="relative min-h-64 overflow-hidden rounded-md border border-mint/10 bg-ink-1/60 md:min-h-96">
-          <Image
-            src="/art/campaign/16-accumulation.webp"
-            alt="Mint particles accumulating inside a transparent glass vessel"
-            fill
-            sizes="(max-width: 767px) 100vw, 28vw"
-            className="object-cover object-center"
-          />
-        </figure>
-      </div>
 
       <div className="relative mt-[clamp(5rem,9vw,8rem)] rounded-md bg-ink-1/55 p-[clamp(1.25rem,3.5vw,3rem)] shadow-[inset_0_1px_0_rgba(151,252,228,0.07),0_40px_120px_-60px_rgba(0,0,0,0.9)] backdrop-blur-md">
         <div className="mb-10 flex flex-wrap items-end justify-between gap-x-10 gap-y-4">

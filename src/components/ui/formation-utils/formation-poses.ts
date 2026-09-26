@@ -114,15 +114,25 @@ const buildFlatRing = (
   cardH: number,
   flatScale: number,
   portrait: boolean,
+  mobile: boolean,
 ) => {
-  const flatCY = portrait ? H * 0.015 : H * 0.045;
+  let flatCY = portrait ? H * 0.015 : H * 0.045;
   const cw = cardW * flatScale;
   const ch = cardH * flatScale;
   const R0 = Math.min(W * 0.3, H * 0.38);
 
   const Rc = Math.min(W / 2 - cw * 0.5 - ch * 0.12 - 22, H / 2 - ch * 0.5 - flatCY - 22);
-  const Rx = portrait ? Rc : Math.min(R0, W / 2 - cardW * 0.6);
-  const Ry = portrait ? Rc : Math.min(R0, H / 2 - cardH * 0.6);
+  let Rx = portrait ? Rc : Math.min(R0, W / 2 - cardW * 0.6);
+  let Ry = portrait ? Rc : Math.min(R0, H / 2 - cardH * 0.6);
+  if (mobile && portrait) {
+    // Phones: a circle is width-bound and leaves the stage's height empty, so
+    // the ellipse stands upright, lifted clear of the formation switch below.
+    const top = 16;
+    const bottom = 72;
+    flatCY = (top - bottom) / 2;
+    Rx = W / 2 - cw * 0.5 - ch * 0.12 - 22;
+    Ry = Math.max(Rx, (H - top - bottom) / 2 - ch * 0.5);
+  }
 
   const M = 3000;
   const dphi = TWO_PI / M;
@@ -182,9 +192,10 @@ export const getLayout = (W: number, H: number, n: number): FmLayout => {
   const cardW = mobile
     ? clamp(Math.min(W, H) * 0.27, 80, 118)
     : clamp(Math.min(W, H) * 0.155, 128, 196);
-  const cardH = Math.round(cardW * 1.34);
-  const flatScale = mobile ? 0.42 : 0.62;
-  const ring = buildFlatRing(W, H, n, cardW, cardH, flatScale, portrait);
+  const cardH = cardW;
+  // The upright phone ellipse has the perimeter for larger cards.
+  const flatScale = mobile ? (portrait ? 0.5 : 0.42) : 0.62;
+  const ring = buildFlatRing(W, H, n, cardW, cardH, flatScale, portrait, mobile);
   return { H, W, cardH, cardW, flatScale, mobile, n, portrait, ...ring };
 };
 

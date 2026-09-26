@@ -480,6 +480,31 @@ html[data-intro="seen"] .site-loader {
   display: none;
 }
 
+/* Slow or failed JS: the client marks the overlay `data-live` when it takes
+   the intro over. Unclaimed, the server-rendered overlay fades by itself so
+   the page underneath is never held behind a black screen. */
+html:not([data-intro]) .site-loader:not([data-live]) {
+  animation: site-loader-out 0.4s ease-out 5s both;
+}
+
+/* While it waits on JS the overlay holds the static mark, after a beat so a
+   normal load (claimed well inside it) never flashes it before the dots. */
+html:not([data-intro]) .site-loader:not([data-live]) .site-loader__mark {
+  display: block;
+  animation: site-loader-mark-in 0.6s ease-out 1.2s both;
+}
+
+@keyframes site-loader-mark-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A failed image disappears instead of drawing a broken-image box (layout.tsx). */
+img[data-failed] {
+  visibility: hidden;
+}
+
 /* Reduced motion: a static Hyperliquid mark in place of the dot sequence,
    gone after a short fade. It never takes input (site-loader.tsx also skips
    the scroll lock), so the page is usable from the first frame. */
