@@ -475,9 +475,36 @@ body.scroll-locked {
   overflow: hidden;
 }
 
-/* Intro gate: repeat visits (session) and reduced motion never paint the loader. */
+/* Intro gate: repeat visits in the session never paint the loader. */
 html[data-intro="seen"] .site-loader {
   display: none;
+}
+
+/* Reduced motion: a static Hyperliquid mark in place of the dot sequence,
+   gone after a short fade. It never takes input (site-loader.tsx also skips
+   the scroll lock), so the page is usable from the first frame. */
+.site-loader__mark {
+  display: none;
+}
+
+html[data-intro="reduced"] .site-loader {
+  pointer-events: none;
+  animation: site-loader-out 0.25s ease-out 0.6s both;
+}
+
+html[data-intro="reduced"] .site-loader__mark {
+  display: block;
+}
+
+html[data-intro="reduced"] .site-loader__dots {
+  display: none;
+}
+
+@keyframes site-loader-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 @layer components {
