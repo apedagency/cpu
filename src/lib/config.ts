@@ -59,8 +59,8 @@ export const links = {
   x: "https://x.com/cpuhyperliquid",
   dexscreener:
     "https://dexscreener.com/hyperevm/0xc31650e8abaea2c6b88a06c508ad7d545e66efba",
-  /** Temporary — replace with the invite link when the server is public. */
-  discord: "https://discord.com",
+  /** No public server yet. Set the invite URL here and the Discord links appear in the menu and footer. */
+  discord: null as string | null,
   signal: `https://signal.family/t/${token.address.toLowerCase()}`,
   signalDocs: "https://signal.family/docs",
 } as const;

@@ -15,6 +15,8 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
+import Image from "next/image";
+import { useReducedMotion } from "@/hooks/use-media";
 
 import type { FmLayout, FormationMode, Pose, Work } from "./formation-utils/formation-poses";
 import {
@@ -110,7 +112,6 @@ const makeCards = (works: Work[]): CardState[] =>
     work,
   }));
 
-const pad = (n: number) => String(n).padStart(2, "0");
 const isDragging = (s: LoopState) => s.press?.committed === true;
 const isUI = (target: EventTarget | null) => target instanceof Element && target.closest("[data-fm-ui]") !== null;
 
@@ -125,10 +126,10 @@ interface FormationProps {
 
 export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }: FormationProps): ReactNode => {
   const [mode, setMode] = useState<FormationMode>("flat");
+  const reduced = useReducedMotion();
 
   const rootRef = useRef<HTMLElement | null>(null);
   const parallaxRef = useRef<HTMLDivElement | null>(null);
-  const counterRef = useRef<HTMLSpanElement | null>(null);
   const selectRef = useRef(onSelect);
   const focusRef = useRef(onFocusChange);
   selectRef.current = onSelect;
@@ -218,7 +219,6 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
     }
     if (parallaxRef.current) parallaxRef.current.style.transform = "";
     const focused = focusedCard();
-    if (counterRef.current && focused) counterRef.current.textContent = `${pad(focused.index + 1)} — ${pad(n)}`;
     if (focused) focusRef.current?.(focused.index);
   };
 
@@ -328,7 +328,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
     const root = rootRef.current;
     if (!root) return;
     const st = S;
-    st.reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    st.reduced = reduced;
     const box = boxRef.current;
 
     const measure = () => {
@@ -362,7 +362,6 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
       if (!focused) focused = focusedCard();
       if (focused && focused !== st.lastFocused) {
         st.lastFocused = focused;
-        if (counterRef.current) counterRef.current.textContent = `${pad(focused.index + 1)} — ${pad(n)}`;
         focusRef.current?.(focused.index);
       }
     };
@@ -530,7 +529,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
       box.h = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- engine closes over refs by design
-  }, [cards, n, S]);
+  }, [cards, n, reduced, S]);
 
   useEffect(() => {
     const inners = cards.map((c) => c.inner).filter((el): el is HTMLDivElement => el !== null);
@@ -567,7 +566,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
       io.disconnect();
       tween?.kill();
     };
-  }, [cards, S]);
+  }, [cards, reduced, S]);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -587,9 +586,9 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
   }, [mode, cards, S]);
 
   const stageStyle: CustomCSS = {
-    "--fm-bg": "#031613",
+    "--fm-bg": "transparent",
     "--fm-fg": "#fbf9fb",
-    background: "radial-gradient(120% 90% at 50% 40%, #052923 0%, #031613 55%, #0b0f12 100%)",
+    background: "radial-gradient(70% 64% at 50% 45%, rgba(5,41,35,0.58) 0%, rgba(3,22,19,0.2) 58%, transparent 100%)",
     color: "rgba(251,249,251,0.92)",
     touchAction: "pan-y",
   };
@@ -620,7 +619,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
               role="img"
               aria-label={card.work.alt}
               className="absolute left-1/2 top-1/2"
-              style={{ opacity: 0, transformStyle: "preserve-3d" }}
+              style={{ opacity: 1, transformStyle: "preserve-3d" }}
             >
               <div
                 ref={(el) => {
@@ -630,7 +629,7 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
                 style={{
                   borderRadius: 10,
                   boxShadow: "0 16px 40px -16px rgba(0,0,0,0.7), 0 0 0 1px rgba(151,252,228,0.10)",
-                  opacity: 0,
+                  opacity: 1,
                   background: "radial-gradient(90% 70% at 50% 30%, #0b3a33 0%, #042826 55%, #031613 100%)",
                 }}
               >
@@ -638,15 +637,15 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
                   className="absolute inset-0 overflow-hidden"
                   style={{ borderRadius: 10, transform: `scale(calc(1 + ${HOVER_ZOOM} * var(--hv, 0)))` }}
                 >
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      backgroundImage: `url(${card.work.image})`,
-                      backgroundPosition: card.work.fit === "contain" ? "center 60%" : "center",
-                      backgroundRepeat: "no-repeat",
-                      backgroundSize: card.work.fit === "contain" ? "86% auto" : "cover",
-                      borderRadius: 10,
-                    }}
+                  <Image
+                    src={card.work.image}
+                    alt=""
+                    fill
+                    loading="lazy"
+                    // Largest a card gets: ~110 px (Arc) on phones, ~280 px (Orbit front) on desktop.
+                    sizes="(max-width: 639px) 112px, 280px"
+                    className={card.work.fit === "contain" ? "object-contain p-[7%]" : "object-cover"}
+                    style={{ objectPosition: card.work.objectPosition ?? (card.work.fit === "contain" ? "center 60%" : "center") }}
                   />
                 </div>
               </div>
@@ -655,27 +654,8 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
         </div>
       </div>
 
-      <footer
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex items-end justify-end p-5 sm:px-8"
-        style={{ color: "var(--fm-fg)" }}
-      >
-        <span
-          ref={counterRef}
-          aria-hidden="true"
-          className="hidden font-mono uppercase sm:block"
-          style={{ fontSize: "0.64rem", fontVariantNumeric: "tabular-nums", letterSpacing: "0.2em", opacity: 0.55 }}
-        >
-          {`01 — ${pad(n)}`}
-        </span>
-      </footer>
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6 sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-5 sm:justify-end sm:px-0 sm:pr-6">
-        <div
-          role="radiogroup"
-          aria-label="Formation"
-          data-fm-ui
-          className="pointer-events-auto flex gap-1 rounded-full border border-mint/15 bg-ink-1/80 p-1 shadow-[0_14px_40px_-20px_rgba(0,0,0,0.6)] backdrop-blur-md"
-        >
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-5 sm:inset-x-auto sm:right-0 sm:justify-end sm:pr-(--gutter)">
+        <div role="radiogroup" aria-label="Formation" data-fm-ui className="pointer-events-auto flex gap-0.5">
           {MODES.map((m) => {
             const active = mode === m.id;
             return (
@@ -685,8 +665,8 @@ export const Formation = ({ works, onSelect, onFocusChange, label = "Gallery" }:
                 type="button"
                 aria-checked={active}
                 onClick={() => setMode(m.id)}
-                className={`min-h-9 rounded-full px-3.5 text-[0.8rem] font-medium transition-colors ${
-                  active ? "bg-teal text-ink-1" : "text-paper/80 hover:text-paper"
+                className={`relative min-h-11 min-w-11 px-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.16em] transition-colors after:absolute after:inset-x-2.5 after:bottom-2 after:h-0.5 after:origin-left after:bg-teal after:transition-transform after:duration-500 ${
+                  active ? "text-paper after:scale-x-100" : "text-paper/40 after:scale-x-0 hover:text-paper/80"
                 }`}
               >
                 {m.label}

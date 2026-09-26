@@ -1,169 +1,103 @@
 "use client";
 
-// Segmented Control by ddoemonn (21st.dev).
-// CPU adaptation: the thumb's spring (motion/react) is reproduced with a CSS
-// transition on an overshooting curve, so the site ships one animation
-// library. The masked label copy riding inside the thumb — the component's
-// signature detail — is unchanged. Options may carry a leading visual.
+// Segmented Control by ddoemonn (21st.dev). CPU adaptation: motion's spring is
+// replaced by a GSAP tween so the site keeps one animation runtime, and each
+// cell can carry media (the PFP body-angle thumbnails) above its label. The
+// signature is unchanged: a radiogroup of equal cells, a thumb that slides to
+// the checked cell, roving tabindex with Arrow / Home / End keys. Controlled,
+// so the editor owns the value.
 
-import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import gsap from "gsap";
+import { useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useReducedMotion } from "@/hooks/use-media";
 import { cn } from "@/lib/utils";
 
-const SEG =
-  "flex min-h-10 items-center justify-center gap-2 px-3 py-2 text-center text-[13px] font-medium leading-[18px] tracking-[-0.01em] whitespace-nowrap";
-
-const SPRING = "transform 420ms cubic-bezier(0.34, 1.32, 0.52, 1)";
-
-export type SegmentedOption = {
+export interface SegmentedOption {
   value: string;
   label: string;
-  /** Optional leading visual (swatch, thumbnail). Decorative. */
-  lead?: ReactNode;
+  media?: ReactNode;
   disabled?: boolean;
-};
+}
 
-export type SegmentedControlProps = {
+interface SegmentedControlProps {
   options: SegmentedOption[];
   label: string;
-  value?: string;
-  defaultValue?: string;
-  onValueChange?: (value: string) => void;
+  value: string;
+  onValueChange: (value: string) => void;
   className?: string;
-  /** Below the sm breakpoint show only each option's lead visual. */
-  compact?: boolean;
-};
+}
 
-export function SegmentedControl({
-  options,
-  label,
-  value,
-  defaultValue,
-  onValueChange,
-  className = "",
-  compact = false,
-}: SegmentedControlProps) {
+export function SegmentedControl({ options, label, value, onValueChange, className }: SegmentedControlProps) {
+  const reduced = useReducedMotion();
   const count = Math.max(1, options.length);
-  const template = `repeat(${count}, minmax(0, 1fr))`;
-
-  const [internal, setInternal] = useState(() => defaultValue ?? options[0]?.value ?? "");
-  const [hovered, setHovered] = useState(-1);
-
-  const controlled = value !== undefined;
-  const current = controlled ? value : internal;
-  const found = options.findIndex((o) => o.value === current);
+  const found = options.findIndex((o) => o.value === value);
   const index = found < 0 ? 0 : found;
-
+  const thumbRef = useRef<HTMLSpanElement>(null);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
-  const emit = useRef(onValueChange);
+  const placed = useRef(false);
+
+  // The thumb is one cell wide, so xPercent = index * 100 lands on the cell.
   useLayoutEffect(() => {
-    emit.current = onValueChange;
-  }, [onValueChange]);
-
-  const select = useCallback(
-    (next: string) => {
-      if (!controlled) setInternal(next);
-      if (next !== current) emit.current?.(next);
-    },
-    [controlled, current],
-  );
-
-  const seek = useCallback(
-    (from: number, dir: number) => {
-      let i = from;
-      for (let k = 0; k < count; k++) {
-        i = (i + dir + count) % count;
-        if (!options[i]?.disabled) return i;
-      }
-      return from;
-    },
-    [count, options],
-  );
-
-  const go = useCallback(
-    (i: number) => {
-      const option = options[i];
-      if (!option || option.disabled) return;
-      buttons.current[i]?.focus();
-      select(option.value);
-    },
-    [options, select],
-  );
-
-  const onKeyDown = (e: React.KeyboardEvent, i: number) => {
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-      e.preventDefault();
-      go(seek(i, 1));
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-      e.preventDefault();
-      go(seek(i, -1));
-    } else if (e.key === "Home") {
-      e.preventDefault();
-      go(seek(count - 1, 1));
-    } else if (e.key === "End") {
-      e.preventDefault();
-      go(seek(0, -1));
+    const thumb = thumbRef.current;
+    if (!thumb) return;
+    if (!placed.current || reduced) {
+      gsap.set(thumb, { xPercent: index * 100 });
+      placed.current = true;
+      return;
     }
+    const tween = gsap.to(thumb, { xPercent: index * 100, duration: 0.42, ease: "back.out(1.4)", overwrite: true });
+    return () => {
+      tween.kill();
+    };
+  }, [index, reduced]);
+
+  const seek = (from: number, dir: number) => {
+    let i = from;
+    for (let k = 0; k < count; k++) {
+      i = (i + dir + count) % count;
+      if (!options[i]?.disabled) return i;
+    }
+    return from;
   };
 
-  const content = (option: SegmentedOption) => (
-    <>
-      {option.lead}
-      <span className={cn("truncate", compact && option.lead && "max-sm:hidden")}>{option.label}</span>
-    </>
-  );
+  const go = (i: number) => {
+    const option = options[i];
+    if (!option || option.disabled) return;
+    buttons.current[i]?.focus();
+    if (option.value !== value) onValueChange(option.value);
+  };
+
+  const onKeyDown = (e: KeyboardEvent, i: number) => {
+    const moves: Record<string, () => number> = {
+      ArrowRight: () => seek(i, 1),
+      ArrowDown: () => seek(i, 1),
+      ArrowLeft: () => seek(i, -1),
+      ArrowUp: () => seek(i, -1),
+      Home: () => seek(count - 1, 1),
+      End: () => seek(0, -1),
+    };
+    const move = moves[e.key];
+    if (!move) return;
+    e.preventDefault();
+    go(move());
+  };
 
   return (
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn(
-        "relative block w-full select-none rounded-[9px] border border-mint/15 bg-ink-1 p-[3px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.45)]",
-        className,
-      )}
+      className={cn("relative select-none rounded-sm border border-mint/12 bg-ink-1/60 p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.45)]", className)}
     >
-      <div className="relative grid" style={{ gridTemplateColumns: template, touchAction: "manipulation" }}>
-        {options.map((option, i) => (
-          <span
-            key={option.value}
-            aria-hidden
-            className={cn(
-              SEG,
-              "pointer-events-none",
-              option.disabled
-                ? "text-paper/25"
-                : hovered === i && i !== index
-                  ? "text-paper"
-                  : "text-muted-foreground",
-            )}
-          >
-            {content(option)}
-          </span>
-        ))}
-
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 overflow-hidden rounded-[6px] bg-teal shadow-[0_1px_2px_rgba(0,0,0,0.5),0_0_24px_-6px_rgba(0,240,230,0.55)] motion-reduce:!transition-none"
-          style={{ width: `${100 / count}%`, transform: `translateX(${index * 100}%)`, transition: SPRING }}
-        >
-          <div
-            className="absolute inset-0 motion-reduce:!transition-none"
-            style={{ transform: `translateX(${index * -100}%)`, transition: SPRING }}
-          >
-            <div
-              className="absolute inset-y-0 left-0 grid"
-              style={{ width: `${count * 100}%`, gridTemplateColumns: template }}
-            >
-              {options.map((option) => (
-                <span key={option.value} className={cn(SEG, "text-ink-1")}>
-                  {content(option)}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="absolute inset-0 grid" style={{ gridTemplateColumns: template }} onPointerLeave={() => setHovered(-1)}>
-          {options.map((option, i) => (
+      <div className="relative grid" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`, touchAction: "manipulation" }}>
+        <span
+          ref={thumbRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 rounded-xs bg-mint/10 shadow-[inset_0_0_0_1px_rgba(0,240,230,0.6),0_0_24px_-10px_var(--cpu-teal)]"
+          style={{ width: `${100 / count}%` }}
+        />
+        {options.map((option, i) => {
+          const checked = i === index;
+          return (
             <button
               key={option.value}
               ref={(node) => {
@@ -171,18 +105,21 @@ export function SegmentedControl({
               }}
               type="button"
               role="radio"
-              aria-checked={i === index}
+              aria-checked={checked}
               aria-disabled={option.disabled || undefined}
-              tabIndex={i === index ? 0 : -1}
-              onClick={() => !option.disabled && select(option.value)}
+              tabIndex={checked ? 0 : -1}
+              onClick={() => !option.disabled && go(i)}
               onKeyDown={(e) => onKeyDown(e, i)}
-              onPointerEnter={() => !option.disabled && setHovered(i)}
-              className="cursor-pointer rounded-[6px] outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--cpu-white)]"
+              className={cn(
+                "relative z-10 flex min-h-11 flex-col items-center justify-center gap-1 rounded-xs px-0.5 pb-1.5 pt-1 text-paper/55 outline-none transition-colors duration-200 hover:text-paper focus-visible:shadow-[inset_0_0_0_2px_var(--cpu-teal)] aria-disabled:opacity-35",
+                checked && "text-paper",
+              )}
             >
-              <span className="sr-only">{option.label}</span>
+              {option.media}
+              <span className="text-[0.625rem] font-semibold uppercase leading-none tracking-[0.1em]">{option.label}</span>
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,189 +1,272 @@
-import { HYPERLIQUID_PATH, HYPERLIQUID_VIEWBOX } from "@/components/brand/marks";
-import { manifest, type BackgroundLayer } from "./manifest";
-import type { PfpState } from "./state";
+import { HYPERLIQUID_PATH } from "@/components/brand/marks";
+import { BODIES, DEFAULTS, VISOR, VISOR_GLASS_W, VISOR_SRC, type BodyAngle, type LayerId, type VisorAsset } from "./manifest";
+import type { PfpState, Transform } from "./state";
 
-export type AssetMap = Map<string, HTMLImageElement>;
+export type UserImage = HTMLCanvasElement;
 
-const [VB_X, VB_Y, VB_W, VB_H] = HYPERLIQUID_VIEWBOX.split(" ").map(Number);
+/** A decoded kit layer: an ImageBitmap where supported, so drawing never decodes on the main thread. */
+export type KitImage = ImageBitmap | HTMLImageElement;
+
+interface AlphaMask {
+  data: Uint8ClampedArray;
+  w: number;
+  h: number;
+}
+
+export interface Kit {
+  visor: Record<VisorAsset, KitImage>;
+  /** Glass silhouette filled with the multiply colour (built once). */
+  multiply: HTMLCanvasElement;
+  mask: AlphaMask;
+}
+
+export interface LoadedBody {
+  image: KitImage;
+  /** Inner back of turned angles, drawn under the PFP. */
+  back: KitImage | null;
+  mask: AlphaMask;
+}
+
+export type Bodies = Partial<Record<BodyAngle, LoadedBody>>;
+
+/** Drawing options for the empty stage (the kit shown without a wearer). */
+export interface DrawOptions {
+  bodyAlpha?: number;
+}
+
+/* Official mark bounds (see HYPERLIQUID_VIEWBOX). */
+const MARK = { x: 24.88, y: 44.53, w: 150.24, h: 110.95 };
 let markPath: Path2D | null = null;
-const getMark = () => (markPath ??= new Path2D(HYPERLIQUID_PATH));
 
-function drawBackground(ctx: CanvasRenderingContext2D, S: number, bg: BackgroundLayer, assets: AssetMap, seed: number) {
-  switch (bg.kind) {
-    case "solid":
-      ctx.fillStyle = bg.color;
-      ctx.fillRect(0, 0, S, S);
-      return;
-    case "radial": {
-      const g = ctx.createRadialGradient(S * 0.5, S * 0.42, 0, S * 0.5, S * 0.5, S * 0.75);
-      g.addColorStop(0, bg.inner);
-      g.addColorStop(1, bg.outer);
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, S, S);
-      return;
-    }
-    case "halftone": {
-      ctx.fillStyle = bg.ground;
-      ctx.fillRect(0, 0, S, S);
-      // Deterministic wave field in the banner's halftone language.
-      const cell = S / 56;
-      const phase = (seed % 97) / 97;
-      ctx.fillStyle = bg.ink;
-      for (let gy = 0; gy < 58; gy++) {
-        for (let gx = 0; gx < 58; gx++) {
-          const off = gy % 2 ? cell / 2 : 0;
-          const px = gx * cell + off;
-          const py = gy * cell;
-          const u = px / S;
-          const v = py / S;
-          const wave = Math.sin(u * 5.2 + Math.sin(v * 3.1 + phase * 6.28) * 1.6 + phase * 6.28) * 0.5 + 0.5;
-          const band = Math.pow(wave, 2.4) * (0.35 + 0.65 * Math.abs(Math.sin(v * 2.4 + u * 1.3)));
-          const r = band * cell * 0.46;
-          if (r < cell * 0.06) continue;
-          ctx.globalAlpha = 0.35 + band * 0.65;
-          ctx.beginPath();
-          ctx.arc(px, py, r, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      ctx.globalAlpha = 1;
-      return;
-    }
-    case "image": {
-      const img = assets.get(bg.src);
-      if (!img) {
-        ctx.fillStyle = "#031613";
-        ctx.fillRect(0, 0, S, S);
-        return;
-      }
-      const scale = Math.max(S / img.naturalWidth, S / img.naturalHeight);
-      const w = img.naturalWidth * scale;
-      const h = img.naturalHeight * scale;
-      ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
-      // Keep the figure legible over the busy environment.
-      const g = ctx.createRadialGradient(S / 2, S * 0.55, S * 0.05, S / 2, S * 0.55, S * 0.6);
-      g.addColorStop(0, "rgba(2,12,10,0.72)");
-      g.addColorStop(1, "rgba(2,12,10,0.05)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, S, S);
-    }
-  }
+/* ------------------------------------------------------------------ */
+/* Geometry: one matrix per layer, shared by drawing and hit-testing.  */
+/* ------------------------------------------------------------------ */
+
+const apply = (m: DOMMatrix, size: number, t: Transform) =>
+  m.translate(t.x * size, t.y * size).rotate(t.rotation).scale(t.scale);
+
+export interface LayerBox {
+  matrix: DOMMatrix;
+  /** Local rect drawn at (x, y, w, h) under `matrix`. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
-export function characterRect(S: number, state: PfpState, img: { width: number; height: number }) {
-  const base = manifest.base.find((b) => b.id === state.base)!;
-  const h = S * base.frame.h * state.zoom;
-  const w = h * (img.width / img.height);
-  const cx = S * (base.frame.x + state.x);
-  const cy = S * (base.frame.y + state.y);
-  return { x: cx - w / 2, y: cy - h / 2, w, h };
+export function glassesBox(state: PfpState, size: number): LayerBox {
+  const w = (DEFAULTS.glasses.glassW * size) / VISOR_GLASS_W;
+  const h = w * VISOR.aspect;
+  const anchor = new DOMMatrix().translate(DEFAULTS.glasses.cx * size, DEFAULTS.glasses.cy * size);
+  return { matrix: apply(anchor, size, state.transforms.glasses), x: -w * VISOR.mark.cx, y: -h * VISOR.mark.cy, w, h };
 }
 
-/**
- * Deterministic layer order: background → back light → character →
- * shade → badges → name. Used for both the live preview and the export.
- */
-export function drawPfp(ctx: CanvasRenderingContext2D, S: number, state: PfpState, assets: AssetMap, fontFamily: string) {
+export function bodyBox(state: PfpState, size: number, angle: BodyAngle = state.angle): LayerBox {
+  const kit = BODIES[angle];
+  const w = (DEFAULTS.body.moduleH * size) / kit.moduleH;
+  const h = w * kit.aspect;
+  const anchor = new DOMMatrix().translate(DEFAULTS.body.cx * size, DEFAULTS.body.cy * size);
+  return { matrix: apply(anchor, size, state.transforms.body), x: -w * kit.anchor.cx, y: -h * kit.anchor.cy, w, h };
+}
+
+export function pfpBox(state: PfpState, size: number, image: UserImage): LayerBox {
+  const fit = Math.max(size / image.width, size / image.height);
+  const w = image.width * fit;
+  const h = image.height * fit;
+  return { matrix: apply(new DOMMatrix().translate(size / 2, size / 2), size, state.transforms.userPfp), x: -w / 2, y: -h / 2, w, h };
+}
+
+/** Where the layer's pixels are: the glass itself for the glasses, the whole frame otherwise. */
+export function outlineBox(id: LayerId, state: PfpState, size: number, image: UserImage | null): LayerBox | null {
+  if (id === "userPfp") return image ? pfpBox(state, size, image) : null;
+  if (id === "body") return state.bodyOn ? bodyBox(state, size) : null;
+  const b = glassesBox(state, size);
+  const g = VISOR.glass;
+  return { ...b, x: b.x + g.x0 * b.w, y: b.y + g.y0 * b.h, w: (g.x1 - g.x0) * b.w, h: (g.y1 - g.y0) * b.h };
+}
+
+function sample(mask: AlphaMask, box: LayerBox, px: number, py: number) {
+  const p = box.matrix.inverse().transformPoint(new DOMPoint(px, py));
+  const u = (p.x - box.x) / box.w;
+  const v = (p.y - box.y) / box.h;
+  if (u < 0 || u >= 1 || v < 0 || v >= 1) return 0;
+  return mask.data[Math.floor(v * mask.h) * mask.w + Math.floor(u * mask.w)];
+}
+
+/** Top-most layer whose actual pixels are under (px, py) in canvas pixels. */
+export function hitTest(kit: Kit, bodies: Bodies, state: PfpState, size: number, image: UserImage | null, px: number, py: number): LayerId | null {
+  if (sample(kit.mask, glassesBox(state, size), px, py) > 40) return "glasses";
+  const body = bodies[state.angle];
+  if (state.bodyOn && body && sample(body.mask, bodyBox(state, size), px, py) > 40) return "body";
+  return image ? "userPfp" : null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Drawing                                                             */
+/* ------------------------------------------------------------------ */
+
+function drawBackground(ctx: CanvasRenderingContext2D, size: number) {
+  const g = ctx.createRadialGradient(size * 0.5, size * 0.4, 0, size * 0.5, size * 0.5, size * 0.78);
+  g.addColorStop(0, "#0b4a40");
+  g.addColorStop(0.56, "#031613");
+  g.addColorStop(1, "#0b0f12");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+}
+
+function drawBox(ctx: CanvasRenderingContext2D, box: LayerBox, source: CanvasImageSource, alpha = 1) {
   ctx.save();
-  ctx.clearRect(0, 0, S, S);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-
-  const bg = manifest.backgrounds.find((b) => b.id === state.background)!;
-  drawBackground(ctx, S, bg, assets, state.seed);
-
-  const base = manifest.base.find((b) => b.id === state.base)!;
-  const img = assets.get(base.src);
-  const glow = state.light === "glow" || state.light === "both";
-  const shade = state.light === "shade" || state.light === "both";
-
-  if (img) {
-    const r = characterRect(S, state, base);
-    if (glow) {
-      const g = ctx.createRadialGradient(r.x + r.w / 2, S * 0.55, 0, r.x + r.w / 2, S * 0.55, S * 0.55);
-      g.addColorStop(0, "rgba(0,240,230,0.28)");
-      g.addColorStop(1, "rgba(0,240,230,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, S, S);
-      ctx.shadowColor = "rgba(0,240,230,0.55)";
-      ctx.shadowBlur = S * 0.035;
-    }
-    ctx.drawImage(img, r.x, r.y, r.w, r.h);
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-  }
-
-  if (shade) {
-    const g = ctx.createRadialGradient(S / 2, S / 2, S * 0.32, S / 2, S / 2, S * 0.74);
-    g.addColorStop(0, "rgba(2,12,10,0)");
-    g.addColorStop(1, "rgba(2,12,10,0.78)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, S, S);
-  }
-
-  const pad = S * 0.055;
-  if (state.badge === "mark" || state.badge === "both") {
-    const w = S * 0.13;
-    const scale = w / VB_W;
-    const h = VB_H * scale;
-    ctx.save();
-    ctx.translate(S - pad - w, S - pad - h);
-    ctx.scale(scale, scale);
-    ctx.translate(-VB_X, -VB_Y);
-    ctx.shadowColor = "rgba(0,0,0,0.45)";
-    ctx.shadowBlur = 40;
-    ctx.fillStyle = "#97fce4";
-    ctx.fill(getMark());
-    ctx.restore();
-  }
-  if (state.badge === "ticker" || state.badge === "both") {
-    ctx.save();
-    ctx.font = `900 ${Math.round(S * 0.085)}px ${fontFamily}`;
-    ctx.fontVariantCaps = "normal";
-    ctx.textBaseline = "alphabetic";
-    ctx.shadowColor = "rgba(0,0,0,0.5)";
-    ctx.shadowBlur = S * 0.02;
-    ctx.fillStyle = "#97fce4";
-    ctx.fillText("$", pad, S - pad);
-    const dollar = ctx.measureText("$").width;
-    ctx.fillStyle = "#fbf9fb";
-    ctx.fillText("CPU", pad + dollar, S - pad);
-    ctx.restore();
-  }
-
-  if (state.name) {
-    ctx.save();
-    ctx.font = `700 ${Math.round(S * 0.038)}px ${fontFamily}`;
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "rgba(251,249,251,0.92)";
-    ctx.shadowColor = "rgba(0,0,0,0.6)";
-    ctx.shadowBlur = S * 0.015;
-    ctx.fillText(state.name.toUpperCase(), pad, pad);
-    ctx.restore();
-  }
-
+  ctx.setTransform(ctx.getTransform().multiply(box.matrix));
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(source, box.x, box.y, box.w, box.h);
   ctx.restore();
 }
 
-export function loadAssets(srcs: string[]): Promise<{ assets: AssetMap; missing: string[] }> {
-  const assets: AssetMap = new Map();
-  const missing: string[] = [];
-  return Promise.all(
-    srcs.map(
-      (src) =>
-        new Promise<void>((resolve) => {
-          const img = new Image();
-          img.decoding = "async";
-          img.onload = () => {
-            assets.set(src, img);
-            resolve();
-          };
-          img.onerror = () => {
-            missing.push(src);
-            resolve();
-          };
-          img.src = src;
-        }),
-    ),
-  ).then(() => ({ assets, missing }));
+/**
+ * The glasses, as layered glass: every layer shares the frame, so the effects
+ * follow the glasses without being separate editor layers.
+ */
+function drawGlasses(ctx: CanvasRenderingContext2D, kit: Kit, box: LayerBox, glass: number) {
+  const base = ctx.getTransform();
+  const v = kit.visor;
+  const at = (img: CanvasImageSource, alpha = 1, op: GlobalCompositeOperation = "source-over") => {
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = op;
+    ctx.drawImage(img, box.x, box.y, box.w, box.h);
+  };
+  ctx.save();
+  ctx.setTransform(base.multiply(box.matrix));
+
+  // 1. Contact shadow on the wearer, then the glass: a multiply pass keeps the
+  //    face's light but turns it teal, and the glass colour darkens it.
+  at(v.shadow, 0.5 + 0.5 * glass);
+  at(kit.multiply, Math.min(1, glass * 1.15), "multiply");
+  at(v.base, glass);
+  // 2. The dark frame edge, always solid.
+  at(v.rim);
+  // 3. Light: soft sheen, reflections, the mint rim glow, specular highlights,
+  //    and the rim light spilling onto the wearer. Screen brightens whatever is
+  //    underneath, so the glass stays readable on dark and light PFPs.
+  at(v.softReflection, 1, "screen");
+  at(v.reflection, 1, "screen");
+  at(v.glow, 1, "screen");
+  at(v.highlight, 1, "screen");
+  at(v.rimLight, 0.55 + 0.45 * glass, "screen");
+  ctx.globalCompositeOperation = "source-over";
+
+  // 4. The exact Hyperliquid mark, lit from inside.
+  markPath ??= new Path2D(HYPERLIQUID_PATH);
+  const mw = VISOR.mark.w * box.w;
+  const k = mw / MARK.w;
+  ctx.translate(box.x + VISOR.mark.cx * box.w, box.y + VISOR.mark.cy * box.h);
+  ctx.scale(k, k);
+  ctx.translate(-(MARK.x + MARK.w / 2), -(MARK.y + MARK.h / 2));
+  const m = ctx.getTransform();
+  const px = Math.hypot(m.a, m.b); // device px per mark unit
+  const fill = ctx.createLinearGradient(0, MARK.y, 0, MARK.y + MARK.h);
+  fill.addColorStop(0, "#c9fff4");
+  fill.addColorStop(0.5, "#86f8ec");
+  fill.addColorStop(1, "#43e3d8");
+  ctx.fillStyle = fill;
+  ctx.shadowColor = "rgba(0, 240, 230, 0.9)";
+  ctx.shadowBlur = 26 * px;
+  ctx.globalAlpha = 0.95;
+  ctx.fill(markPath);
+  ctx.shadowBlur = 8 * px;
+  ctx.fill(markPath);
+  ctx.restore();
+}
+
+export function drawPfp(
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  state: PfpState,
+  kit: Kit,
+  bodies: Bodies,
+  image: UserImage | null,
+  options: DrawOptions = {},
+) {
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  drawBackground(ctx, size);
+
+  // background → armor inner back → PFP → armor front → glasses. The PFP is
+  // never masked: its head simply sits over the open top of the frame.
+  const body = state.bodyOn ? bodies[state.angle] : undefined;
+  const box = body ? bodyBox(state, size) : null;
+  if (body?.back && box) drawBox(ctx, box, body.back, options.bodyAlpha ?? 1);
+  if (image) drawBox(ctx, pfpBox(state, size, image), image);
+  if (body && box) drawBox(ctx, box, body.image, options.bodyAlpha ?? 1);
+  drawGlasses(ctx, kit, glassesBox(state, size), state.glass);
+  ctx.restore();
+}
+
+/* ------------------------------------------------------------------ */
+/* Loading                                                             */
+/* ------------------------------------------------------------------ */
+
+const sizeOf = (img: KitImage) =>
+  img instanceof HTMLImageElement ? { w: img.naturalWidth, h: img.naturalHeight } : { w: img.width, h: img.height };
+
+/**
+ * Resolves with decoded pixels. Canvas draws of an <img> re-decode on the main
+ * thread even after img.decode() (a 70–360 ms stall on the first paint), so the
+ * layers become ImageBitmaps, decoded off-thread once.
+ */
+async function loadImage(src: string): Promise<KitImage> {
+  const img = new Image();
+  img.decoding = "async";
+  img.src = src;
+  try {
+    await img.decode();
+  } catch {
+    throw new Error(`Could not load ${src}`);
+  }
+  if (typeof createImageBitmap !== "function") return img;
+  return createImageBitmap(img).catch(() => img);
+}
+
+function alphaMask(img: KitImage): AlphaMask {
+  const size = sizeOf(img);
+  const scale = Math.min(1, 256 / Math.max(size.w, size.h));
+  const w = Math.max(1, Math.round(size.w * scale));
+  const h = Math.max(1, Math.round(size.h * scale));
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(img, 0, 0, w, h);
+  const rgba = ctx.getImageData(0, 0, w, h).data;
+  const data = new Uint8ClampedArray(w * h);
+  for (let i = 0; i < data.length; i++) data[i] = rgba[i * 4 + 3];
+  return { data, w, h };
+}
+
+export async function loadKit(): Promise<Kit> {
+  const entries = await Promise.all(
+    (Object.entries(VISOR_SRC) as [VisorAsset, string][]).map(async ([key, src]) => [key, await loadImage(src)] as const),
+  );
+  const visor = Object.fromEntries(entries) as Record<VisorAsset, KitImage>;
+
+  const base = visor.base;
+  const multiply = document.createElement("canvas");
+  const baseSize = sizeOf(base);
+  multiply.width = baseSize.w;
+  multiply.height = baseSize.h;
+  const mctx = multiply.getContext("2d")!;
+  mctx.drawImage(base, 0, 0);
+  mctx.globalCompositeOperation = "source-in";
+  mctx.fillStyle = VISOR.multiply;
+  mctx.fillRect(0, 0, multiply.width, multiply.height);
+
+  return { visor, multiply, mask: alphaMask(base) };
+}
+
+export async function loadBody(angle: BodyAngle): Promise<LoadedBody> {
+  const kit = BODIES[angle];
+  const [image, back] = await Promise.all([loadImage(kit.src), kit.back ? loadImage(kit.back) : null]);
+  return { image, back, mask: alphaMask(image) };
 }

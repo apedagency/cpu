@@ -1,0 +1,376 @@
+{
+  "version": 1,
+  "project": {
+    "name": "cat-purrcessing-unit",
+    "productType": null,
+    "stack": [
+      "nextjs",
+      "react",
+      "shadcn",
+      "tailwind-v4"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "src/app/globals.css"
+    ],
+    "components": [
+      "src/components/ui"
+    ],
+    "assets": [
+      "public/brand",
+      "assets"
+    ],
+    "instructions": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ]
+  },
+  "design": {
+    "colorMode": "light-and-dark",
+    "colors": {
+      "--cpu-muted": {
+        "value": "#9fb5ae",
+        "source": "src/app/globals.css"
+      },
+      "--background": {
+        "value": "var(--cpu-black)",
+        "source": "src/app/globals.css"
+      },
+      "--foreground": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--card-foreground": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--popover-foreground": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--primary": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--primary-foreground": {
+        "value": "var(--cpu-ink-1)",
+        "source": "src/app/globals.css"
+      },
+      "--secondary": {
+        "value": "var(--cpu-ink-3)",
+        "source": "src/app/globals.css"
+      },
+      "--secondary-foreground": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--muted": {
+        "value": "#0a2621",
+        "source": "src/app/globals.css"
+      },
+      "--muted-foreground": {
+        "value": "var(--cpu-muted)",
+        "source": "src/app/globals.css"
+      },
+      "--accent": {
+        "value": "var(--cpu-mint)",
+        "source": "src/app/globals.css"
+      },
+      "--accent-foreground": {
+        "value": "var(--cpu-ink-1)",
+        "source": "src/app/globals.css"
+      },
+      "--border": {
+        "value": "rgb(151 252 228 / 0.13)",
+        "source": "src/app/globals.css"
+      },
+      "--ring": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--chart-1": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--chart-2": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--chart-down": {
+        "value": "var(--cpu-fog)",
+        "source": "src/app/globals.css"
+      },
+      "--color-background": {
+        "value": "var(--background)",
+        "source": "src/app/globals.css"
+      },
+      "--color-foreground": {
+        "value": "var(--foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-card": {
+        "value": "var(--card)",
+        "source": "src/app/globals.css"
+      },
+      "--color-card-foreground": {
+        "value": "var(--card-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-popover": {
+        "value": "var(--popover)",
+        "source": "src/app/globals.css"
+      },
+      "--color-popover-foreground": {
+        "value": "var(--popover-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-primary": {
+        "value": "var(--primary)",
+        "source": "src/app/globals.css"
+      },
+      "--color-primary-foreground": {
+        "value": "var(--primary-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-secondary": {
+        "value": "var(--secondary)",
+        "source": "src/app/globals.css"
+      },
+      "--color-secondary-foreground": {
+        "value": "var(--secondary-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-muted": {
+        "value": "var(--muted)",
+        "source": "src/app/globals.css"
+      },
+      "--color-muted-foreground": {
+        "value": "var(--muted-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-accent": {
+        "value": "var(--accent)",
+        "source": "src/app/globals.css"
+      },
+      "--color-accent-foreground": {
+        "value": "var(--accent-foreground)",
+        "source": "src/app/globals.css"
+      },
+      "--color-border": {
+        "value": "var(--border)",
+        "source": "src/app/globals.css"
+      },
+      "--color-input": {
+        "value": "var(--input)",
+        "source": "src/app/globals.css"
+      },
+      "--color-ring": {
+        "value": "var(--ring)",
+        "source": "src/app/globals.css"
+      },
+      "--color-chart-1": {
+        "value": "var(--chart-1)",
+        "source": "src/app/globals.css"
+      },
+      "--color-chart-2": {
+        "value": "var(--chart-2)",
+        "source": "src/app/globals.css"
+      },
+      "--color-cpu-black": {
+        "value": "var(--cpu-black)",
+        "source": "src/app/globals.css"
+      },
+      "--color-ink-1": {
+        "value": "var(--cpu-ink-1)",
+        "source": "src/app/globals.css"
+      },
+      "--color-ink-2": {
+        "value": "var(--cpu-ink-2)",
+        "source": "src/app/globals.css"
+      },
+      "--color-ink-3": {
+        "value": "var(--cpu-ink-3)",
+        "source": "src/app/globals.css"
+      },
+      "--color-visor": {
+        "value": "var(--cpu-visor)",
+        "source": "src/app/globals.css"
+      },
+      "--color-forest": {
+        "value": "var(--cpu-forest)",
+        "source": "src/app/globals.css"
+      },
+      "--color-graphite": {
+        "value": "var(--cpu-graphite)",
+        "source": "src/app/globals.css"
+      },
+      "--color-teal": {
+        "value": "var(--cpu-teal)",
+        "source": "src/app/globals.css"
+      },
+      "--color-mint": {
+        "value": "var(--cpu-mint)",
+        "source": "src/app/globals.css"
+      },
+      "--color-paper": {
+        "value": "var(--cpu-white)",
+        "source": "src/app/globals.css"
+      },
+      "--color-fog": {
+        "value": "var(--cpu-fog)",
+        "source": "src/app/globals.css"
+      }
+    },
+    "typography": {
+      "--font-sans": {
+        "value": "var(--font-flex), ui-sans-serif, system-ui, sans-serif",
+        "source": "src/app/globals.css"
+      },
+      "--font-mono": {
+        "value": "var(--font-mono-face), ui-monospace, SFMono-Regular, Menlo, monospace",
+        "source": "src/app/globals.css"
+      }
+    },
+    "spacing": {
+      "--gutter": {
+        "value": "clamp(1rem, 4vw, 3.5rem)",
+        "source": "src/app/globals.css"
+      }
+    },
+    "radius": {
+      "--radius": {
+        "value": "0.5rem",
+        "source": "src/app/globals.css"
+      },
+      "--radius-sm": {
+        "value": "calc(var(--radius) * 0.6)",
+        "source": "src/app/globals.css"
+      },
+      "--radius-md": {
+        "value": "calc(var(--radius) * 0.8)",
+        "source": "src/app/globals.css"
+      },
+      "--radius-lg": {
+        "value": "var(--radius)",
+        "source": "src/app/globals.css"
+      },
+      "--radius-xl": {
+        "value": "calc(var(--radius) * 1.4)",
+        "source": "src/app/globals.css"
+      }
+    },
+    "shadows": {},
+    "motion": {
+      "--ease-out-expo": {
+        "value": "var(--ease-out-expo)",
+        "source": "src/app/globals.css"
+      },
+      "--ease-in-out-quart": {
+        "value": "var(--ease-in-out-quart)",
+        "source": "src/app/globals.css"
+      }
+    },
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [
+      "amount-slider",
+      "animated-beam",
+      "animated-tabs",
+      "balance-chart",
+      "dot-transition",
+      "formation",
+      "formation-utils",
+      "halftone-dots-led-screen",
+      "immersive-full-screen-nav",
+      "scroll-reveal-content",
+      "text-hover-effect",
+      "toolbar-dynamic",
+      "variable-text-proximity"
+    ],
+    "preferredPrimitives": [
+      "radix-ui"
+    ],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [
+      "Product: an interactive crypto/memecoin brand website for Cat Purrcessing Unit ($CPU) on HyperEVM — an editorial, experimental web experience, not an app dashboard or SaaS product",
+      "Dark-only: every surface is black (#0B0F12) or deep green-black (#031613/#04201B); there is no light theme. The detector reports light-and-dark only because Tailwind v4 declares tokens under :root/@theme",
+      "Energy colour is Hyperliquid teal #00F0E6 with mint #97FCE4; white #FBF9FB is for type; graphite #2A2F36 for hardware; pink appears only on the cat's ears",
+      "One continuous page-level environment (fixed halftone WebGL + glass light) behind transparent sections; sections are content planes, not boxed panels",
+      "Hierarchy through space, type scale, alignment, light and motion before borders and cards; radius is used deliberately (mostly sharp, rounded only for glass/visor forms)",
+      "Community 21st.dev components carry the signature interaction of each section; Radix/shadcn primitives only underneath for accessibility",
+      "Keep real market and reward logic unchanged; show Unavailable rather than 0 or a guess when data is missing",
+      "Keep uploaded PFP images local to the browser",
+      "Use only official CPU art (crops, mattes and extractions of supplied art are fine)"
+    ],
+    "avoid": [
+      "Light-mode or light SaaS UI of any kind",
+      "Generic dashboard layouts, KPI card rows and card grids",
+      "Card/Tabs/Input/Button assemblies as a section's visual identity",
+      "Purple or rainbow gradients",
+      "Pill navigation, fake terminals, fake blockchain nodes and decorative particles",
+      "APY, projections or reward forecasts presented as outcomes",
+      "Multiple always-running WebGL canvases",
+      "New generated CPU character artwork or generic sci-fi armour"
+    ]
+  },
+  "decisions": [
+    {
+      "id": "site-environment",
+      "decision": "Promote the raw WebGL halftone into one fixed SiteEnvironment; section roots stay transparent and GSAP ScrollTrigger re-lights the world per section",
+      "source": "src/features/environment/site-environment.tsx"
+    },
+    {
+      "id": "pfp-render-pipeline",
+      "decision": "Compose the PFP kit with Canvas 2D from raster/SVG assets extracted from official art; one drawPfp() renders preview and 2048px export; no Three.js",
+      "source": "src/features/engine/compose.ts"
+    },
+    {
+      "id": "interaction-locks",
+      "decision": "src/lib/scroll-lock.ts is the only owner of page scroll locking; loader lifecycle, nav inert/visibility and environment pointer-events are functionally locked",
+      "source": "src/lib/scroll-lock.ts"
+    }
+  ],
+  "evidence": [
+    {
+      "fact": "components.installed",
+      "source": "src/components/ui"
+    },
+    {
+      "fact": "design.colorMode:light-and-dark",
+      "source": "src/app/globals.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "src/app/globals.css"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "AGENTS.md"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "CLAUDE.md"
+    },
+    {
+      "fact": "project.stack:nextjs",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:shadcn",
+      "source": "components.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-09-25T20:35:02.041Z"
+}

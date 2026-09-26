@@ -304,10 +304,10 @@ export default function BalanceChart<T extends string>({
         })}
       </div>
 
-      <div className="relative mx-auto mt-5 flex w-full max-w-[360px] gap-1" role="radiogroup" aria-label="Timeframe">
+      <div className="relative mt-5 flex w-full max-w-[320px] gap-1" role="radiogroup" aria-label="Timeframe">
         <span
           aria-hidden
-          className="absolute inset-y-0 left-0 rounded-full bg-teal/15 ring-1 ring-teal/40 transition-transform duration-[380ms] ease-[cubic-bezier(0.34,1.16,0.5,1)] motion-reduce:transition-none"
+          className="absolute bottom-1 left-0 h-0.5 bg-teal shadow-[0_0_10px_var(--cpu-teal)] transition-transform duration-[380ms] ease-[cubic-bezier(0.34,1.16,0.5,1)] motion-reduce:transition-none"
           style={{
             width: `calc((100% - ${(timeframes.length - 1) * 4}px) / ${timeframes.length})`,
             transform: `translateX(calc(${timeframes.indexOf(timeframe)} * (100% + 4px)))`,
@@ -320,7 +320,7 @@ export default function BalanceChart<T extends string>({
             role="radio"
             onClick={() => onTimeframe(t)}
             aria-checked={timeframe === t}
-            className="relative z-1 h-9 flex-1 rounded-full text-[12px] font-medium tracking-[0.01em] tabular-nums transition-[color,transform] duration-200 active:scale-[0.94] motion-reduce:transition-none"
+            className="relative z-1 h-11 flex-1 text-[12px] font-semibold tracking-[0.08em] tabular-nums transition-[color,transform] duration-200 active:scale-[0.94] motion-reduce:transition-none"
             style={{ color: timeframe === t ? TEXT : TEXT_MUTED }}
           >
             {t}

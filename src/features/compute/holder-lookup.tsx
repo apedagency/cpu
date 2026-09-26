@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Search } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { links, network, shortAddress } from "@/lib/config";
 import { amount, assetAmount, usd } from "@/lib/format";
@@ -11,11 +11,12 @@ type State =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "invalid" }
-  | { kind: "error"; message: string }
+  | { kind: "error" }
   | { kind: "ready"; data: HolderPosition };
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
+/** Wallet mode: paste an address, read the contract, show what it holds and what it's owed. */
 export function HolderLookup({ rewards }: { rewards: RewardSnapshot | null }) {
   const [value, setValue] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
@@ -26,6 +27,7 @@ export function HolderLookup({ rewards }: { rewards: RewardSnapshot | null }) {
   const px = rewards?.payout.priceUsd ?? null;
   const eligibleSupply = rewards?.chain?.eligibleSupply ?? null;
   const minEligible = rewards?.chain?.minEligible ?? null;
+  const toUsd = (v: number) => (px === null ? null : v * px);
 
   const lookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,25 +42,22 @@ export function HolderLookup({ rewards }: { rewards: RewardSnapshot | null }) {
     setState({ kind: "loading" });
     try {
       const res = await fetch(`/api/holder?address=${address}`, { signal: c.signal });
-      const body = (await res.json()) as Envelope<HolderPosition> | { error: string };
+      const body = (await res.json().catch(() => ({ error: `HTTP ${res.status}` }))) as Envelope<HolderPosition> | { error: string };
       if (!res.ok || "error" in body) throw new Error("error" in body ? body.error : `HTTP ${res.status}`);
       setState({ kind: "ready", data: body.data });
-    } catch (err) {
+    } catch {
       if (c.signal.aborted) return;
-      setState({ kind: "error", message: err instanceof Error ? err.message : "Lookup failed" });
+      setState({ kind: "error" });
     }
   };
 
-  const toUsd = (v: number) => (px === null ? null : v * px);
-
   return (
-    <div className="flex flex-col gap-5">
-      <form onSubmit={lookup} className="flex flex-col gap-2" noValidate>
-        <label htmlFor={id} className="text-sm text-paper/80">
-          Check a wallet
-          <span className="block text-xs text-muted-foreground">Read-only. Paste any HyperEVM address — no wallet connection.</span>
+    <div className="flex flex-col gap-8">
+      <form onSubmit={lookup} noValidate className="flex flex-col gap-2">
+        <label htmlFor={id} className="text-sm text-paper/55">
+          Paste any HyperEVM address — read-only, no wallet connection
         </label>
-        <div className="flex gap-2">
+        <div className="flex items-end gap-3">
           <input
             id={id}
             value={value}
@@ -72,72 +71,68 @@ export function HolderLookup({ rewards }: { rewards: RewardSnapshot | null }) {
             aria-invalid={state.kind === "invalid"}
             aria-describedby={`${id}-status`}
             className={cn(
-              "h-11 min-w-0 flex-1 rounded-md border border-mint/20 bg-ink-1 px-3 font-mono text-sm text-paper outline-none transition-colors placeholder:text-paper/30 focus:border-teal",
+              "h-12 min-w-0 flex-1 border-b border-paper/20 bg-transparent font-mono text-[clamp(0.8125rem,1.4vw,1rem)] text-paper outline-none transition-[border-color,box-shadow] placeholder:text-paper/25 hover:border-paper/40 focus:border-teal focus-visible:shadow-[0_2px_0_var(--cpu-teal)]",
               state.kind === "invalid" && "border-fog",
             )}
           />
           <button
             type="submit"
             disabled={state.kind === "loading"}
-            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md bg-teal px-4 text-sm font-semibold text-ink-1 transition-colors hover:bg-mint disabled:opacity-60"
+            className="inline-flex h-11 shrink-0 items-center rounded-xs bg-teal px-5 text-sm font-semibold text-ink-1 transition-[background-color,box-shadow] hover:bg-mint hover:shadow-[0_0_28px_-6px_var(--cpu-teal)] disabled:opacity-60"
           >
-            <Search className="size-4" aria-hidden="true" />
-            Read
+            {state.kind === "loading" ? "Reading…" : "Read"}
           </button>
         </div>
       </form>
 
-      <div id={`${id}-status`} aria-live="polite" className="min-h-6">
+      <div id={`${id}-status`} aria-live="polite" className="min-h-24">
+        {state.kind === "idle" && <p className="text-sm text-paper/35">Balance, eligibility and what the contract owes this wallet.</p>}
         {state.kind === "invalid" && <p className="text-sm text-fog">That isn&apos;t a 0x address with 40 hex characters.</p>}
         {state.kind === "loading" && (
-          <div className="grid gap-3 sm:grid-cols-3" aria-label="Reading the contract">
+          <div className="grid gap-6 sm:grid-cols-3" aria-label="Reading the contract">
             {[0, 1, 2].map((i) => (
-              <span key={i} className="skeleton h-16 rounded-md" />
+              <span key={i} className="skeleton h-14 rounded-xs" />
             ))}
           </div>
         )}
         {state.kind === "error" && (
           <p className="text-sm text-fog" role="alert">
-            The contract read failed ({state.message}). Nothing is shown rather than a guess — try again.
+            The contract read didn&apos;t answer. Nothing is shown rather than a guess — try again in a moment.
           </p>
         )}
         {state.kind === "ready" && (
-          <div className="flex flex-col gap-4">
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <div className="flex flex-col gap-7">
+            <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <span className="tabular text-[clamp(1.75rem,2.6vw,2.25rem)] font-semibold leading-none tracking-[-0.02em] text-paper">
+                {amount(state.data.balance, 0)} <span className="text-base font-medium text-mint">CPU</span>
+              </span>
+              <span className={cn("text-sm font-medium", state.data.eligible ? "text-teal" : "text-paper/55")}>
+                {state.data.eligible
+                  ? `Counts for rewards${eligibleSupply ? ` · ${((state.data.balance / eligibleSupply) * 100).toFixed(3)}% of eligible supply` : ""}`
+                  : `Below the ${minEligible ? amount(minEligible, 0) : ""} CPU minimum`}
+              </span>
               <a
                 href={network.explorer.address(state.data.address)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-mono text-paper underline-offset-4 hover:underline"
+                className="font-mono text-xs text-paper/45 underline-offset-4 hover:text-paper hover:underline"
               >
                 {shortAddress(state.data.address)}
                 <span className="sr-only">(opens in a new tab)</span>
               </a>
-              <span>
-                {amount(state.data.balance, 0)} CPU
-                {eligibleSupply && state.data.eligible && (
-                  <> · {((state.data.balance / eligibleSupply) * 100).toFixed(3)}% of eligible supply</>
-                )}
-              </span>
-              <span className={cn("type-label", state.data.eligible ? "text-teal" : "text-fog")}>
-                {state.data.eligible ? "Counts for rewards" : `Below ${minEligible ? amount(minEligible, 0) : "the"} minimum`}
-              </span>
             </p>
-            <dl className="grid gap-px overflow-hidden rounded-md border border-mint/12 bg-mint/10 sm:grid-cols-3">
+            <dl className="grid gap-x-10 gap-y-5 sm:grid-cols-3">
               {[
-                { k: "Paid to this wallet", tag: "Paid", v: state.data.paid },
-                { k: "Claimable now", tag: "Pending", v: state.data.claimable },
-                { k: "Total earned", tag: "Historical", v: state.data.earned },
+                { k: "Claimable now", v: state.data.claimable, lead: true },
+                { k: "Paid to this wallet", v: state.data.paid },
+                { k: "Earned in total", v: state.data.earned },
               ].map((f) => (
-                <div key={f.k} className="flex flex-col gap-1 bg-ink-1 p-4">
-                  <dt className="text-xs text-muted-foreground">
-                    <span className="mr-1.5 font-semibold uppercase tracking-[0.12em] text-mint/80">{f.tag}</span>
-                    {f.k}
-                  </dt>
-                  <dd className="tabular text-xl font-semibold text-paper">
-                    {assetAmount(f.v)} <span className="text-sm font-medium text-mint/80">{sym}</span>
+                <div key={f.k}>
+                  <dt className="text-sm text-paper/55">{f.k}</dt>
+                  <dd className={cn("tabular mt-1.5 font-semibold leading-none tracking-[-0.02em]", f.lead ? "text-[clamp(1.75rem,2.6vw,2.25rem)] text-paper" : "text-xl text-paper/85")}>
+                    {assetAmount(f.v)} <span className="text-sm font-medium text-mint/70">{sym}</span>
                   </dd>
-                  <dd className="tabular text-xs text-muted-foreground">{f.v > 0 ? `≈ ${usd(toUsd(f.v))}` : "—"}</dd>
+                  <dd className="tabular mt-1.5 text-xs text-paper/45">{f.v > 0 ? `≈ ${usd(toUsd(f.v))}` : "—"}</dd>
                 </div>
               ))}
             </dl>
@@ -146,9 +141,9 @@ export function HolderLookup({ rewards }: { rewards: RewardSnapshot | null }) {
                 href={links.signal}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-1 text-sm text-mint underline-offset-4 hover:underline"
+                className="inline-flex w-fit items-center gap-1 text-sm font-medium text-mint underline-offset-4 hover:underline"
               >
-                Claims are made on Signal
+                Claim on Signal
                 <ArrowUpRight className="size-3.5" aria-hidden="true" />
                 <span className="sr-only">(opens in a new tab)</span>
               </a>

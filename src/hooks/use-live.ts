@@ -38,7 +38,8 @@ export function useLive<T>(url: string | null, intervalMs: number): Live<T> {
     inflight.current = ctrl;
     try {
       const res = await fetch(url, { signal: ctrl.signal });
-      const body = (await res.json()) as Envelope<T> | { error: string };
+      // A proxy or platform error page is HTML, not our envelope.
+      const body = (await res.json().catch(() => ({ error: `HTTP ${res.status}` }))) as Envelope<T> | { error: string };
       if (!res.ok || "error" in body) {
         throw new Error("error" in body ? body.error : `HTTP ${res.status}`);
       }

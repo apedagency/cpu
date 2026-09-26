@@ -21,6 +21,9 @@ const mono = Roboto_Mono({
 
 const title = `${site.name} ($${site.ticker})`;
 
+/** Marks images that fail to load (error doesn't bubble, so capture) — globals.css hides them. */
+const IMAGE_FAILSAFE_SCRIPT = `document.addEventListener("error",function(e){var t=e.target;if(t&&t.tagName==="IMG")t.setAttribute("data-failed","")},true)`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.domain),
   title: { default: title, template: `%s · ${site.name}` },
@@ -33,7 +36,7 @@ export const metadata: Metadata = {
     siteName: site.name,
     title,
     description: site.description,
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `${site.name} on a halftone green stage` }],
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `${site.name}, the Hyperliquid cat in a black and white exosuit, under a mint halftone arc` }],
   },
   twitter: {
     card: "summary_large_image",
@@ -56,6 +59,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${flex.variable} ${mono.variable} dark`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: INTRO_GATE_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: IMAGE_FAILSAFE_SCRIPT }} />
         <noscript>
           <style>{`.site-loader{display:none!important}`}</style>
         </noscript>

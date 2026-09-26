@@ -1,10 +1,13 @@
 // Built using Hyperiux Vault: https://vault.hyperiux.com
 // CPU adaptation: Roboto Flex arrives through next/font (no injected <link>),
-// the frame loop only runs while the text is on screen, and the component is
-// a composable block rather than a full-screen section.
+// the frame loop only runs while the text is on screen and under a fine
+// pointer, letter centres are measured once per layout (widths are locked,
+// so they never move) instead of every frame, and the component is a
+// composable block rather than a full-screen section.
 "use client";
 
 import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useFinePointer } from "@/hooks/use-media";
 
 function useInView(ref: RefObject<HTMLElement | null>) {
   const [inView, setInView] = useState(false);
@@ -48,16 +51,8 @@ function usePointerPositionRef(containerRef: RefObject<HTMLElement | null>, acti
       }
     };
     const handleMouseMove = (ev: MouseEvent) => updatePosition(ev.clientX, ev.clientY);
-    const handleTouchMove = (ev: TouchEvent) => {
-      const touch = ev.touches[0];
-      if (touch) updatePosition(touch.clientX, touch.clientY);
-    };
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: true });
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("touchmove", handleTouchMove);
-    };
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [containerRef, active]);
   return positionRef;
 }
@@ -97,6 +92,9 @@ const ProximityLetters = forwardRef<HTMLSpanElement, ProximityLettersProps>((pro
   const smoothedPositionRef = useRef({ x: -9999, y: -9999 });
   const lastPositionRef = useRef<{ x: number | null; y: number | null }>({ x: null, y: null });
   const reducedMotionRef = useRef(false);
+  /** Letter centres relative to the container, and the falloff last written to each letter. */
+  const centresRef = useRef<{ x: number; y: number }[]>([]);
+  const appliedRef = useRef<number[]>([]);
   const [fontReady, setFontReady] = useState(false);
 
   useEffect(() => {
@@ -139,11 +137,17 @@ const ProximityLetters = forwardRef<HTMLSpanElement, ProximityLettersProps>((pro
         letterRef.style.textAlign = "center";
         letterRef.style.width = `${Math.max(fromWidth, toWidth)}px`;
       });
+      const box = containerRef.current?.getBoundingClientRect();
+      centresRef.current = letterRefs.current.map((el) => {
+        const r = el?.getBoundingClientRect();
+        return r && box ? { x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top } : { x: -1e6, y: -1e6 };
+      });
+      appliedRef.current = [];
     };
     lock();
     window.addEventListener("resize", lock);
     return () => window.removeEventListener("resize", lock);
-  }, [fromFontVariationSettings, toFontVariationSettings, label, fontReady]);
+  }, [fromFontVariationSettings, toFontVariationSettings, label, fontReady, containerRef]);
 
   const parsedSettings = useMemo(() => {
     const parseSettings = (settingsStr: string) =>
@@ -196,22 +200,22 @@ const ProximityLetters = forwardRef<HTMLSpanElement, ProximityLettersProps>((pro
       return;
     }
     lastPositionRef.current = { x: smoothed.x, y: smoothed.y };
-    const containerRect = containerRef.current.getBoundingClientRect();
+    const centres = centresRef.current;
+    const applied = appliedRef.current;
 
-    letterRefs.current.forEach((letterRef) => {
-      if (!letterRef) return;
-      const rect = letterRef.getBoundingClientRect();
-      const dx = smoothed.x - (rect.left + rect.width / 2 - containerRect.left);
-      const dy = smoothed.y - (rect.top + rect.height / 2 - containerRect.top);
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      if (distance >= radius) {
-        letterRef.style.fontVariationSettings = fromFontVariationSettings;
-        return;
-      }
-      const f = calculateFalloff(distance);
-      letterRef.style.fontVariationSettings = parsedSettings
-        .map(({ axis, fromValue, toValue }) => `'${axis}' ${fromValue + (toValue - fromValue) * f}`)
-        .join(", ");
+    // Writes only, and only where a letter's weight actually changes: reading a
+    // rect after each write forced a layout per letter per frame.
+    letterRefs.current.forEach((letterRef, i) => {
+      const c = centres[i];
+      if (!letterRef || !c) return;
+      const distance = Math.hypot(smoothed.x - c.x, smoothed.y - c.y);
+      const f = distance >= radius ? 0 : Math.round(calculateFalloff(distance) * 100) / 100;
+      if (applied[i] === f) return;
+      applied[i] = f;
+      letterRef.style.fontVariationSettings =
+        f === 0
+          ? fromFontVariationSettings
+          : parsedSettings.map(({ axis, fromValue, toValue }) => `'${axis}' ${fromValue + (toValue - fromValue) * f}`).join(", ");
     });
   }, active && fontReady);
 
@@ -284,6 +288,9 @@ export default function VariableTextProximity({
 }: VariableTextProximityProps) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const inView = useInView(stageRef);
+  // A proximity effect needs a hovering pointer; under a finger it would only
+  // follow the scroll gesture.
+  const fine = useFinePointer();
 
   const from = `'wght' ${baseWeight}, 'opsz' ${baseOpticalSize}, 'wdth' ${baseWidth}`;
   const to = `'wght' ${hoverWeight}, 'opsz' ${hoverOpticalSize}, 'wdth' ${hoverWidth}`;
@@ -296,7 +303,7 @@ export default function VariableTextProximity({
           fromFontVariationSettings={from}
           toFontVariationSettings={to}
           containerRef={stageRef}
-          active={inView}
+          active={inView && fine}
           radius={radius}
           falloff={falloff}
           accentWords={accentWords}

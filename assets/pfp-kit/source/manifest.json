@@ -1,0 +1,300 @@
+{
+ "generator": "Higgsfield MCP (claude.ai connector)",
+ "date": "2026-09-26",
+ "references": [
+  "assets/cpu-character.png (official guideline sheet, cropped panels)",
+  "public/art/gallery/face-front.webp",
+  "public/art/gallery/face-34.webp",
+  "public/art/character/bust.webp",
+  "public/art/gallery/turn-*.webp",
+  "public/art/gallery/detail-chest.webp",
+  "public/art/gallery/detail-shoulder.webp"
+ ],
+ "rules": "Glasses + upper-body armor only. No cat head, ears, fur, whiskers, stripes or helmet. Official Hyperliquid mark composited from the SVG path (components/brand/marks.tsx), never generated.",
+ "visor": [
+  {
+   "file": "visor-00.png",
+   "model": "gpt_image_2_5",
+   "job_id": "32304793-b72c-4699-96f2-aace222ef412",
+   "verdict": "pass (runner-up): slimmer than the official visor"
+  },
+  {
+   "file": "visor-01.png",
+   "model": "gpt_image_2_5",
+   "job_id": "39c6211a-7699-472f-a824-3ffd23df6d7b",
+   "verdict": "SELECTED: closest silhouette to the official visor (IoU 0.957, aspect 2.53), organic lower lobes, dark outline + mint rim like the character art"
+  },
+  {
+   "file": "visor-02.png",
+   "model": "gpt_image_2_5",
+   "job_id": "444d5ace-cf18-4e3b-bd6d-a5460f8a9a91",
+   "verdict": "pass (runner-up): double rim, wider than official"
+  },
+  {
+   "file": "visor-03.png",
+   "model": "nano_banana_pro",
+   "job_id": "c74521aa-5a15-4ddb-b851-abca6a7a6b88",
+   "verdict": "reject: notch in the top edge"
+  },
+  {
+   "file": "visor-04.png",
+   "model": "nano_banana_pro",
+   "job_id": "3a06fdc9-bd3b-48e5-9976-64012b73c00f",
+   "verdict": "reject: generic ski goggles"
+  },
+  {
+   "file": "visor-05.png",
+   "model": "nano_banana_pro",
+   "job_id": "de1e5645-c123-4e5c-bbb1-2f0076d54669",
+   "verdict": "reject: Vision-Pro style inner shape"
+  },
+  {
+   "file": "visor-06.png",
+   "model": "seedream_v5_pro",
+   "job_id": "ea70ac07-91d4-403c-afe8-c9c59f936747",
+   "verdict": "reject: perspective tilt, asymmetric"
+  },
+  {
+   "file": "visor-07.png",
+   "model": "seedream_v5_pro",
+   "job_id": "a7e4478e-1530-47c8-8dc8-8080da4934d6",
+   "verdict": "reject: chunky goggle frame"
+  }
+ ],
+ "upscales": {
+  "front": "f06672b4-987f-41a8-94f0-6f9dc7a09178",
+  "right-34": "ddeab0e9-ce4f-45a6-8fdd-ada91e2a4973",
+  "left-34": "fbaccdeb-7ac2-4c2b-bb3a-40cf6148b47b",
+  "right": "302c153d-ab00-40e8-8f45-af2b04108096",
+  "left": "cce3cf12-15c4-400e-b0f6-f39c264f40a9"
+ },
+ "processing": {
+  "visor": "GPT Image 2.5 native alpha; render split into glass-base (min(C, #021e1c)), rim (dark outline ring), and screen light layers (reflection / glow / highlight) with exact reconstruction; effects derived from the silhouette. Official mark drawn at runtime from the SVG path.",
+  "body": "Universal lower frame generated open (no neck hole to cut). Higgsfield 4K upscale for colour + GPT Image 2.5 native alpha; edge colour decontaminated; official Hyperliquid path composited onto the blank chest module (module height = shared scale, foreshortening capped at 0.72). Turned profiles: the inner back seen through the open top is split into body-<angle>-back, drawn under the PFP."
+ },
+ "body_v1_retired": {
+  "reason": "Tight collar ring + neck slot assumed a specific neck; replaced by the universal wide-open frame (v2). Files kept outside the site in CPU_PFP_GENERATION/rejected/tight-neck-v1.",
+  "candidates": {
+   "front": [
+    {
+     "file": "front-00.png",
+     "model": "gpt_image_2_5",
+     "job_id": "d60764a0-c949-497e-b8c1-672397900b00",
+     "verdict": "SELECTED: closest to the official suit, low open collar"
+    },
+    {
+     "file": "front-01.png",
+     "model": "gpt_image_2_5",
+     "job_id": "f378eefb-602f-4fc4-b360-1a46b1c53a6c",
+     "verdict": "pass (runner-up): collar too tall"
+    },
+    {
+     "file": "front-02.png",
+     "model": "nano_banana_pro",
+     "job_id": "01c5aebe-fdb5-48f2-9a8c-16032aea67da",
+     "verdict": "reject: realistic suit, off-model"
+    },
+    {
+     "file": "front-03.png",
+     "model": "nano_banana_pro",
+     "job_id": "fcd5b0f4-ce08-4415-9d58-0dc3baab1bdb",
+     "verdict": "reject: small generic vest"
+    },
+    {
+     "file": "front-04.png",
+     "model": "seedream_v5_pro",
+     "job_id": "c44c0d04-84e1-4a4e-97cd-1aa6668fd833",
+     "verdict": "reject: hood-like collar, off-model"
+    }
+   ],
+   "right-34": [
+    {
+     "file": "r34-00.png",
+     "model": "gpt_image_2_5",
+     "job_id": "eec0833b-ce42-4de6-b842-83cd1e02b21d",
+     "verdict": "SELECTED: clean 30 degree turn, pairs with l34-02"
+    },
+    {
+     "file": "r34-01.png",
+     "model": "gpt_image_2_5",
+     "job_id": "72f4cfcf-2bfa-45f7-8d72-b5bd0a3ca803",
+     "verdict": "pass: slightly over-rotated"
+    },
+    {
+     "file": "r34-04.png",
+     "model": "nano_banana_pro",
+     "job_id": "6601fc68-369c-4690-997d-958cd31cf262",
+     "verdict": "reject: barely rotated, chest module lost its glow"
+    },
+    {
+     "file": "r34-06.png",
+     "model": "gpt_image_2_5",
+     "job_id": "93e7b5e9-c136-4413-8c7b-36049564a374",
+     "verdict": "pass: near-shoulder crowds the frame"
+    }
+   ],
+   "left-34": [
+    {
+     "file": "l34-02.png",
+     "model": "gpt_image_2_5",
+     "job_id": "1f89c8a6-bf07-4d7d-a11c-a2e47605c18d",
+     "verdict": "SELECTED: clean 30 degree turn, pairs with r34-00"
+    },
+    {
+     "file": "l34-03.png",
+     "model": "gpt_image_2_5",
+     "job_id": "18b6289f-6620-4aad-9cc9-edd077d15e58",
+     "verdict": "pass: larger in frame than the kit"
+    },
+    {
+     "file": "l34-05.png",
+     "model": "nano_banana_pro",
+     "job_id": "209bde65-e093-475a-96d3-9e1f6ae46a45",
+     "verdict": "reject: barely rotated, chest module lost its glow"
+    },
+    {
+     "file": "l34-07.png",
+     "model": "gpt_image_2_5",
+     "job_id": "f984d4b0-1dd5-45a9-bca0-3f0d2279e253",
+     "verdict": "pass: runner-up"
+    }
+   ],
+   "right": [
+    {
+     "file": "right-08.png",
+     "model": "gpt_image_2_5",
+     "job_id": "5b9e0ff3-b1a6-4b97-bcf0-c1ddf9a0643f",
+     "verdict": "pass: ~50 degrees, too close to the 3/4 asset"
+    },
+    {
+     "file": "right-10.png",
+     "model": "gpt_image_2_5",
+     "job_id": "96accf68-57b5-4967-a362-fe31cbe3295e",
+     "verdict": "reject: collar opening hidden"
+    },
+    {
+     "file": "right-12.png",
+     "model": "gpt_image_2_5",
+     "job_id": "285049ed-f3d3-478e-bff3-3828af9f2a82",
+     "verdict": "SELECTED: ~60 degrees, collar visible, full margins, pairs with left-13"
+    }
+   ],
+   "left": [
+    {
+     "file": "left-09.png",
+     "model": "gpt_image_2_5",
+     "job_id": "895b8b1c-9434-4e43-b629-2e239da48a65",
+     "verdict": "pass: ~50 degrees, too close to the 3/4 asset"
+    },
+    {
+     "file": "left-11.png",
+     "model": "gpt_image_2_5",
+     "job_id": "633f746a-a605-4c4e-b4b7-555a908dd13c",
+     "verdict": "pass: larger in frame than the kit"
+    },
+    {
+     "file": "left-13.png",
+     "model": "gpt_image_2_5",
+     "job_id": "a69b9aa1-4100-403d-97ae-108972d6518f",
+     "verdict": "SELECTED: ~60 degrees, collar visible, full margins, pairs with right-12"
+    }
+   ]
+  }
+ },
+ "body": {
+  "front": [
+   {
+    "file": "wfront-00.png",
+    "model": "gpt_image_2_5",
+    "job_id": "b0c39c60-13e9-438a-b87e-6370da81c605",
+    "verdict": "reject: floating V harness that ends mid-image"
+   },
+   {
+    "file": "wfront-01.png",
+    "model": "gpt_image_2_5",
+    "job_id": "de0a4a2a-c9cc-46be-98dd-09e81f083d8a",
+    "verdict": "pass: wide U, but upswept collar fins reach toward the jaw"
+   },
+   {
+    "file": "wfront-02.png",
+    "model": "gpt_image_2_5",
+    "job_id": "e5ec931f-9b09-4748-b176-46f56b8628ee",
+    "verdict": "reject: narrow rectangular slot, not forgiving"
+   },
+   {
+    "file": "wfront-03.png",
+    "model": "gpt_image_2_5",
+    "job_id": "f657c9f4-250a-48a4-b8f1-f3fc6eea94da",
+    "verdict": "pass: the chosen design, but pauldrons cut by the image sides"
+   },
+   {
+    "file": "wfront-04.png",
+    "model": "gpt_image_2_5",
+    "job_id": "5ca6fdd5-82b7-442a-8aa3-b2bde82e1f2b",
+    "verdict": "SELECTED: wfront-03's design zoomed out, shoulders fully in frame, only the bottom cropped"
+   },
+   {
+    "file": "wfront-05.png",
+    "model": "gpt_image_2_5",
+    "job_id": "a0d74089-0355-42c4-96e9-eb5c33f502ee",
+    "verdict": "pass: pauldrons still touch the sides"
+   }
+  ],
+  "right-34": [
+   {
+    "file": "wr34-10.png",
+    "model": "gpt_image_2_5",
+    "job_id": "03a81191-211d-4b35-9179-3b05007f2bf6",
+    "verdict": "SELECTED: clean ~30 degree turn, open top stays wide, pairs with wl34-11"
+   },
+   {
+    "file": "wr34-14.png",
+    "model": "gpt_image_2_5",
+    "job_id": "a4b86f52-45c8-4790-8eff-af3da6d38f0e",
+    "verdict": "pass: over-rotated, inner back exposed"
+   }
+  ],
+  "left-34": [
+   {
+    "file": "wl34-11.png",
+    "model": "gpt_image_2_5",
+    "job_id": "37ac837b-d3fd-4dca-8fcf-caf101d5ec3c",
+    "verdict": "SELECTED: clean ~30 degree turn, pairs with wr34-10"
+   },
+   {
+    "file": "wl34-15.png",
+    "model": "gpt_image_2_5",
+    "job_id": "8bd19294-6d71-4ee9-b35b-2f9692932676",
+    "verdict": "pass: over-rotated, inner back exposed"
+   }
+  ],
+  "right": [
+   {
+    "file": "wright-12.png",
+    "model": "gpt_image_2_5",
+    "job_id": "9c1c45d4-1b02-4d7c-91ff-9cf9e50844dd",
+    "verdict": "SELECTED: ~55-60 degrees, starts lowest; inner back split to a back layer"
+   },
+   {
+    "file": "wright-16.png",
+    "model": "gpt_image_2_5",
+    "job_id": "0956e161-4d66-43b1-a9c5-39a50d862bad",
+    "verdict": "pass: larger in frame"
+   }
+  ],
+  "left": [
+   {
+    "file": "wleft-13.png",
+    "model": "gpt_image_2_5",
+    "job_id": "4b75fe01-4a65-448a-9213-716fb52e29db",
+    "verdict": "SELECTED: ~55-60 degrees, pairs with wright-12; inner back split to a back layer"
+   },
+   {
+    "file": "wleft-17.png",
+    "model": "gpt_image_2_5",
+    "job_id": "1e4f8821-4897-4f55-b52e-6d298e1cd2d3",
+    "verdict": "pass: larger in frame"
+   }
+  ]
+ }
+}

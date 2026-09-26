@@ -4,8 +4,12 @@
  * CPU colour system — sampled from x-banner + the character sheet.
  * Dark first: black / green-black carry the page, teal + mint carry
  * the energy, white is for type. Pink exists only on the cat.
+ * The site is dark-only: <html> always carries `.dark`, and there is
+ * no light palette to switch to.
  * ------------------------------------------------------------------ */
-:root {
+:root,
+.dark {
+  color-scheme: dark;
   --cpu-black: #0b0f12;
   --cpu-ink-1: #031613;
   --cpu-ink-2: #04201b;
@@ -111,7 +115,7 @@
 
   body {
     min-height: 100dvh;
-    background: var(--cpu-black);
+    background: transparent;
     overflow-x: clip;
   }
 
@@ -129,6 +133,12 @@
     scroll-margin-top: 5rem;
   }
 
+  /* Sections take programmatic focus for in-page navigation; they are not
+     controls, so they don't draw a ring. */
+  section[tabindex="-1"]:focus {
+    outline: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;
@@ -143,9 +153,383 @@
   }
 }
 
-/* Intro gate: repeat visits (session) and reduced motion never paint the loader. */
+.site-environment {
+  --env-shader-opacity: 1;
+  --env-glow-x: 52%;
+  --env-glow-y: 42%;
+  --env-glow-opacity: 0.82;
+  --env-glass-opacity: 0.08;
+  --env-lines-opacity: 0.05;
+  --env-shade-opacity: 0.22;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--cpu-black);
+  contain: strict;
+}
+
+.site-environment__shader,
+.site-environment__aurora,
+.site-environment__glass,
+.site-environment__lines,
+.site-environment__shade,
+.site-environment__grain {
+  position: absolute;
+  inset: -8%;
+}
+
+.site-environment__shader {
+  inset: 0;
+  opacity: var(--env-shader-opacity);
+  transform: scale(1.04);
+  transition: opacity 500ms ease-out;
+}
+
+.site-environment__aurora {
+  opacity: var(--env-glow-opacity);
+  background:
+    radial-gradient(42% 46% at var(--env-glow-x) var(--env-glow-y), rgb(0 240 230 / 0.13), transparent 72%),
+    radial-gradient(70% 58% at 52% 110%, rgb(25 101 66 / 0.2), transparent 68%);
+  filter: blur(18px);
+}
+
+.site-environment__glass {
+  opacity: var(--env-glass-opacity);
+  background:
+    radial-gradient(42% 28% at 60% 48%, rgb(151 252 228 / 0.14), transparent 64%),
+    conic-gradient(from 204deg at 55% 52%, transparent 0 21%, rgb(151 252 228 / 0.11) 25%, transparent 31% 100%);
+  filter: blur(9px) saturate(1.3);
+  transform: rotate(-6deg) scale(1.08);
+}
+
+.site-environment__lines {
+  opacity: var(--env-lines-opacity);
+  background: repeating-linear-gradient(100deg, transparent 0 28px, rgb(151 252 228 / 0.15) 29px, transparent 30px 68px);
+  mask-image: linear-gradient(to bottom, transparent, black 22%, black 78%, transparent);
+  transform: translate3d(-3%, 0, 0);
+}
+
+.site-environment__shade {
+  inset: 0;
+  opacity: var(--env-shade-opacity);
+  background: radial-gradient(80% 70% at 50% 42%, transparent 18%, rgb(2 12 10 / 0.76) 100%);
+}
+
+.site-environment__grain {
+  inset: 0;
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.75'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-environment__shader,
+  .site-environment__aurora,
+  .site-environment__glass,
+  .site-environment__lines,
+  .site-environment__shade {
+    transition: none;
+  }
+}
+
+/* The environment is decoration: nothing inside it may ever take input. */
+.site-environment,
+.site-environment * {
+  pointer-events: none;
+}
+
+/*
+ * Hero scene (src/features/hero/hero-scene.tsx), layered back to front.
+ * Geometry comes from assets/hero/manifest.json:
+ *   character box 1137x1600, body axis 58.67% from the left (the tail sits
+ *   left of it), feet at 98.75%, visor box 44.94/13.06/40.19/14.44 (%),
+ *   plate 2400x1648 with its horizon at 74.76% of the height.
+ *
+ * --fh  figure height      --fb  figure bottom offset    --fx  body axis x
+ * --pw  plate width        --hz  where the plate horizon lands
+ *
+ * Elements carrying [data-parallax] never get a static transform here: the
+ * pointer hook owns their `transform`.
+ */
+.hero-scene {
+  --fh: min(76svh, 58rem, 75vw);
+  --fb: 9svh;
+  --fx: 50%;
+  --pw: max(145vw, 190svh);
+  --hz: 74svh;
+  position: absolute;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (width < 48rem) {
+  .hero-scene {
+    --fh: clamp(15rem, calc(100svh - 29rem), 27rem);
+    --fb: 15rem;
+    --pw: max(130vw, 230svh);
+    --hz: 60svh;
+  }
+}
+
+/* Portrait tablets: height, not width, limits the figure. */
+@media (width >= 48rem) and (orientation: portrait) {
+  .hero-scene {
+    --fh: min(62svh, 58rem, 88vw);
+  }
+}
+
+.hero-scene[data-live] [data-parallax] {
+  will-change: transform;
+}
+
+/* 1 - atmosphere --------------------------------------------------------- */
+
+/* Static mask on a static wrapper: the halftone world still breathes in the
+   sky while the city holds the lower frame. */
+.hero-scene__plate-mask {
+  position: absolute;
+  inset: 0;
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.45) 0%, rgb(0 0 0 / 0.76) 24%, #000 50%);
+}
+
+.hero-scene__plate {
+  position: absolute;
+  right: -4vw;
+  top: calc(var(--hz) - var(--pw) * 0.51335);
+  width: var(--pw);
+  aspect-ratio: 2400 / 1648;
+}
+
+/* Title veil sits under the character: it darkens the tower, never the cat. */
+.hero-scene__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgb(1 8 7 / 0.8) 0%, rgb(1 8 7 / 0.42) 26%, transparent 50%),
+    linear-gradient(180deg, rgb(1 8 7 / 0.5) 0%, transparent 24%);
+}
+
+@media (width < 48rem) {
+  .hero-scene__veil {
+    background: linear-gradient(180deg, rgb(1 8 7 / 0.78) 0%, rgb(1 8 7 / 0.3) 26%, transparent 42%);
+  }
+}
+
+/* The word, as a monument letterform behind the cat. */
+.hero-scene__stencil {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% - var(--fb) - var(--fh) * 0.9);
+  margin: 0;
+  text-align: center;
+  font-size: clamp(8rem, 35vw, 34rem);
+  line-height: 0.8;
+  color: rgb(2 12 10 / 0.52);
+  -webkit-text-stroke: 1px rgb(151 252 228 / 0.1);
+}
+
+@media (width < 48rem) {
+  .hero-scene__stencil {
+    font-size: 42vw;
+    top: calc(100% - var(--fb) - var(--fh) * 0.86);
+  }
+}
+
+/* 2 - light behind the head and shoulders -------------------------------- */
+
+.hero-scene__halo {
+  position: absolute;
+  width: calc(var(--fh) * 1.2);
+  aspect-ratio: 1;
+  left: calc(var(--fx) + var(--fh) * 0.04 - var(--fh) * 0.6);
+  top: calc(100% - var(--fb) - var(--fh) * 0.72 - var(--fh) * 0.6);
+  opacity: 0.84;
+}
+
+/* 3 - glass objects: one behind the cat (sharp), one before it (defocused) */
+
+.hero-scene__far {
+  position: absolute;
+  width: calc(var(--fh) * 0.19);
+  left: calc(var(--fx) + var(--fh) * 0.43);
+  top: calc(100% - var(--fb) - var(--fh) * 0.9);
+  opacity: 0.88;
+}
+
+.hero-scene__near {
+  position: absolute;
+  width: calc(var(--fh) * 0.25);
+  left: calc(var(--fx) - var(--fh) * 0.75);
+  top: calc(100% - var(--fb) - var(--fh) * 0.46);
+  opacity: 0.72;
+}
+
+@media (width < 48rem) {
+  .hero-scene__far {
+    width: calc(var(--fh) * 0.2);
+    left: calc(var(--fx) + var(--fh) * 0.34);
+    top: calc(100% - var(--fb) - var(--fh) * 1.02);
+  }
+
+  .hero-scene__near {
+    width: calc(var(--fh) * 0.3);
+    left: calc(var(--fx) - var(--fh) * 0.6);
+    top: calc(100% - var(--fb) - var(--fh) * 0.84);
+  }
+}
+
+@media (width >= 48rem) and (orientation: portrait) {
+  .hero-scene__far {
+    left: calc(var(--fx) + var(--fh) * 0.34);
+  }
+
+  .hero-scene__near {
+    left: calc(var(--fx) - var(--fh) * 0.56);
+  }
+}
+
+/* 4 - the character ------------------------------------------------------- */
+
+.hero-scene__figure,
+.hero-scene__ground {
+  position: absolute;
+  left: calc(var(--fx) - var(--fh) * 0.41697);
+  width: calc(var(--fh) * 0.710625);
+}
+
+.hero-scene__figure {
+  bottom: var(--fb);
+  height: var(--fh);
+  /* Lean pivots at the feet, so the floor contact never slides. */
+  transform-origin: 58.67% 98.75%;
+}
+
+/* Reflection + contact shadow, positioned from the feet line of the figure box. */
+.hero-scene__ground {
+  top: calc(100% - var(--fb) - var(--fh) * (1 - 0.9369));
+  height: calc(var(--fh) * 0.36);
+}
+
+.hero-scene__visor {
+  position: absolute;
+  left: 44.94%;
+  top: 13.06%;
+  width: 40.19%;
+  height: 14.44%;
+  overflow: hidden;
+  mask-image: url("/hero/hero-visor-mask.webp");
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+
+.hero-scene__glint {
+  position: absolute;
+  top: 0;
+  left: -42%;
+  width: 160%;
+  height: 100%;
+  opacity: 0.9;
+}
+
+/* 5 - lens ---------------------------------------------------------------- */
+
+/* Floor handoff: under the figure, over its reflection. */
+.hero-scene__floor {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 26svh;
+  background: linear-gradient(180deg, transparent 0%, rgb(11 15 18 / 0.55) 55%, var(--cpu-black) 100%);
+}
+
+.hero-scene__glass {
+  position: absolute;
+  inset: -3%;
+  width: 106%;
+  height: 106%;
+  object-fit: cover;
+}
+
+/* Last few pixels resolve to the page ground so the section edge never shows. */
+.hero-scene__edge {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 5svh;
+  background: linear-gradient(180deg, transparent, var(--cpu-black));
+}
+
+.hero-scene__fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Only src/lib/scroll-lock.ts toggles this; vertical scroll is native otherwise. */
+html.scroll-locked,
+body.scroll-locked {
+  overflow: hidden;
+}
+
+/* Intro gate: repeat visits in the session never paint the loader. */
 html[data-intro="seen"] .site-loader {
   display: none;
+}
+
+/* Slow or failed JS: the client marks the overlay `data-live` when it takes
+   the intro over. Unclaimed, the server-rendered overlay fades by itself so
+   the page underneath is never held behind a black screen. */
+html:not([data-intro]) .site-loader:not([data-live]) {
+  animation: site-loader-out 0.4s ease-out 5s both;
+}
+
+/* While it waits on JS the overlay holds the static mark, after a beat so a
+   normal load (claimed well inside it) never flashes it before the dots. */
+html:not([data-intro]) .site-loader:not([data-live]) .site-loader__mark {
+  display: block;
+  animation: site-loader-mark-in 0.6s ease-out 1.2s both;
+}
+
+@keyframes site-loader-mark-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A failed image disappears instead of drawing a broken-image box (layout.tsx). */
+img[data-failed] {
+  visibility: hidden;
+}
+
+/* Reduced motion: a static Hyperliquid mark in place of the dot sequence,
+   gone after a short fade. It never takes input (site-loader.tsx also skips
+   the scroll lock), so the page is usable from the first frame. */
+.site-loader__mark {
+  display: none;
+}
+
+html[data-intro="reduced"] .site-loader {
+  pointer-events: none;
+  animation: site-loader-out 0.25s ease-out 0.6s both;
+}
+
+html[data-intro="reduced"] .site-loader__mark {
+  display: block;
+}
+
+html[data-intro="reduced"] .site-loader__dots {
+  display: none;
+}
+
+@keyframes site-loader-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 @layer components {
