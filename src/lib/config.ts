@@ -18,8 +18,11 @@ export const site = {
 export const network = {
   name: "HyperEVM",
   chainId: 999,
-  /** Server-side only. Override with HYPEREVM_RPC_URL for a private endpoint. */
-  rpcUrl: process.env.HYPEREVM_RPC_URL ?? "https://rpc.hyperliquid.xyz/evm",
+  /**
+   * Server-side only. Override with HYPEREVM_RPC_URL for a private endpoint.
+   * `||`, not `??`: a blank value (e.g. copied from .env.example) must fall back.
+   */
+  rpcUrl: process.env.HYPEREVM_RPC_URL?.trim() || "https://rpc.hyperliquid.xyz/evm",
   explorer: {
     tx: (hash: string) => `https://hyperevmscan.io/tx/${hash}`,
     address: (addr: string) => `https://hyperevmscan.io/address/${addr}`,
